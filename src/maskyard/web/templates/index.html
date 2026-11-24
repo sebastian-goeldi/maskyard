@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MaskYard</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/bootstrap.min.css') }}">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+      <div class="container">
+        <a class="navbar-brand" href="/">MaskYard</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#main-nav" aria-controls="main-nav"
+                aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="main-nav">
+          <span class="navbar-text">Cell design workspace</span>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container py-5">
+      <h1>MaskYard</h1>
+      <p class="lead">Your cell design workspace.</p>
+
+      <h2 class="h4 mt-5">Cells</h2>
+      {% if groups %}
+      <div class="accordion" id="cell-groups">
+        {% for factory, cells in groups %}
+        <div class="accordion-item">
+          <h3 class="accordion-header" id="factory-heading-{{ loop.index }}">
+            <button class="accordion-button collapsed" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#factory-cells-{{ loop.index }}"
+                    aria-expanded="false" aria-controls="factory-cells-{{ loop.index }}">
+              {% if factory %}
+                {{ factory.name }} <small class="ms-2 text-body-secondary">#{{ factory.id }}</small>
+              {% else %}
+                No PCell factory
+              {% endif %}
+              <span class="badge text-bg-secondary ms-2">{{ cells|length }}</span>
+            </button>
+          </h3>
+          <div class="accordion-collapse collapse" id="factory-cells-{{ loop.index }}"
+               aria-labelledby="factory-heading-{{ loop.index }}">
+            <ul class="list-group list-group-flush">
+              {% for cell in cells %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('cell_page', cell_id=cell.id) }}">{{ cell.name }}</a>
+                <span class="text-body-secondary">#{{ cell.id }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-body-secondary">No cells yet.</p>
+      {% endif %}
+    </main>
+
+    <script src="{{ url_for('static', path='/bootstrap.bundle.min.js') }}"></script>
+  </body>
+</html>

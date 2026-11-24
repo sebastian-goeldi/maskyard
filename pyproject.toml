@@ -1,0 +1,102 @@
+[project]
+name = "maskyard"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Sebastian Goeldi", email = "sebastian.goeldi@protonmail.com" }
+]
+requires-python = ">=3.14"
+classifiers = ["License :: AGPL3+"]
+dependencies = [
+    "sqlmodel>= 0.0.48",
+    "klayout~=0.30.12",
+    "pydantic-settings>=2.16.2",
+    "numpy>=2.5.4",
+    "toolz>=1.2.0",
+    "cachetools>=8.0.0",
+    "scipy>=1.18.1",
+]
+
+[project.scripts]
+maskyard-build-render-cache = "maskyard.web.render_cache:main"
+
+[project.optional-dependencies]
+ray = ["ray>=2.60.0"]
+web = [
+    "fastapi>=0.165.0",
+    "jinja2>=3.1.6",
+    "uvicorn>=0.38.0",
+]
+
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+    "ty>=0.0.97",
+]
+
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+indent-width = 4
+fix = true
+# Like Black, indent with spaces, rather than tabs.
+format.indent-style = "space"
+# Like Black, use double quotes for strings.
+format.quote-style = "double"
+# Like Black, automatically detect the appropriate line ending.
+format.line-ending = "auto"
+# Like Black, respect magic trailing commas.
+format.skip-magic-trailing-comma = false
+lint.select = [ "ALL" ]
+lint.ignore = [
+  "ANN401",
+  "ARG",
+  "BLE001",
+  "C901",
+  "COM812",
+  "CPY001",
+  "D",
+  "D100",
+  "EM",
+  "FBT",
+  "PLC0415",
+  "PLR0904",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  "PLR0917",
+  "PLR2004",
+  "PLW1641",
+  "PT011",
+  "PT012",
+  "S101",
+  "S311",
+  "SLF001",
+  "TC004",
+  "TID252",
+  "TRY003",
+]
+lint.per-file-ignores = { "tests/*.py" = [ "D", "EM101", "INP001", "PLR2004" ], "docs/**/*.py" = [
+  "B018",
+  "E402",
+  "E501",
+  "E741",
+  "ERA001",
+  "INP001",
+  "N801",
+  "N806",
+  "PT018",
+  "RUF001",
+  "RUF002",
+  "RUF003",
+  "T201"
+] }

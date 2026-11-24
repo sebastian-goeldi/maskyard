@@ -1,0 +1,26 @@
+<section class="mt-5" aria-labelledby="layout-heading">
+  <h2 class="h5" id="layout-heading">Layout</h2>
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <button class="btn btn-outline-secondary btn-sm" type="button" id="fit-layout">Fit layout</button>
+    <label class="d-inline-flex align-items-center gap-2 mb-0 small">
+      <input class="form-check-input mt-0" type="checkbox" id="layout-grid-toggle" checked>
+      Grid <span id="layout-grid-spacing" class="text-body-secondary"></span>
+    </label>
+    <span class="text-body-secondary small">Drag to pan and scroll to zoom.</span>
+  </div>
+  <div id="cell-layout" class="border rounded" role="img" aria-label="Layout geometry for {{ cell.name }}"
+       style="height: min(70vh, 800px); min-height: 420px; overflow: hidden; touch-action: none; position: relative;">
+    <div class="small text-body-secondary" style="position: absolute; z-index: 1; left: 12px; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; pointer-events: none;">
+      <div style="background: rgba(255, 255, 255, .9); border-radius: 4px; padding: 4px 8px;">
+        <span id="layout-scale-label"></span>
+        <div id="layout-scale-bar" style="height: 8px; border: 2px solid currentColor; border-top: 0;"></div>
+      </div>
+      <div id="layout-position" style="background: rgba(255, 255, 255, .9); border-radius: 4px; padding: 4px 8px; white-space: nowrap;"></div>
+    </div>
+  </div>
+  <p id="layout-status" class="text-body-secondary small mt-2" aria-live="polite"></p>
+  <div id="layout-layers" class="d-flex flex-wrap gap-3 small" aria-label="Visible layout layers"></div>
+</section>
+<div id="layout-source" data-url="{{ url_for('cell_layout_manifest', cell_id=cell.id) }}"></div>
+<script src="{{ url_for('static', path='/pixi.min.js') }}"></script>
+<script src="{{ url_for('static', path='/cell_layout.js') }}"></script>

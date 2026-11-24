@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ cell.name }} · MaskYard</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/bootstrap.min.css') }}">
+    <style>
+      #cell-graph { height: min(70vh, 800px); min-height: 420px; background: var(--bs-tertiary-bg); }
+      .graph-swatch { display: inline-block; width: 1.25rem; height: .9rem; border-radius: .2rem; vertical-align: middle; }
+      .graph-detail-list { max-height: 12rem; overflow-y: auto; padding-left: 1.5rem; }
+      .json-tree details { margin: .35rem 0; }
+      .json-tree summary { cursor: pointer; }
+      .json-tree .json-value { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .json-tree .json-leaf { padding: .2rem 0; }
+    </style>
+  </head>
+  <body>
+    {% macro json_node(label, value) %}
+      {% if value is mapping and value %}
+      <details>
+        <summary><span class="fw-semibold">{{ label }}</span> <span class="text-body-secondary small">{{ value|length }} keys</span></summary>
+        <div class="border-start ps-3 ms-2">
+          {% for key, child in value.items() %}{{ json_node(key, child) }}{% endfor %}
+        </div>
+      </details>
+      {% elif value is sequence and value is not string and value %}
+      <details>
+        <summary><span class="fw-semibold">{{ label }}</span> <span class="text-body-secondary small">{{ value|length }} items</span></summary>
+        <div class="border-start ps-3 ms-2">
+          {% for child in value %}{{ json_node('[' ~ loop.index0 ~ ']', child) }}{% endfor %}
+        </div>
+      </details>
+      {% else %}
+      <div class="json-leaf"><span class="fw-semibold">{{ label }}</span>: <code class="json-value">{{ value|tojson }}</code></div>
+      {% endif %}
+    {% endmacro %}
+
+    <nav class="navbar bg-body-tertiary">
+      <div class="container">
+        <a class="navbar-brand" href="/">MaskYard</a>
+        <a class="nav-link" href="/">Cells</a>
+      </div>
+    </nav>
+
+    <main class="container py-5">
+      <h1 class="h3">{{ cell.name }} <small class="text-body-secondary">#{{ cell.id }}</small></h1>
+      <p class="text-body-secondary">Instance dependencies: parent cells point to the cells they contain. Select a cell to view its graph.{% if graph_limited %} This large graph shows direct connections only.{% endif %}</p>
+
+      <div class="d-flex flex-wrap gap-3 small mb-3" aria-label="Graph colors">
+        <span><span class="graph-swatch" style="background: linear-gradient(90deg, #b02a37, #6a1420)"></span> Ancestors</span>
+        <span><span class="graph-swatch" style="background: #343a40; border: 2px solid #ffc107"></span> Selected cell</span>
+        <span><span class="graph-swatch" style="background: linear-gradient(90deg, #3166c4, #071f4d)"></span> Descendants</span>
+      </div>
+
+      <div class="d-flex gap-2 align-items-center mb-3">
+        <button class="btn btn-outline-secondary btn-sm" type="button" id="fit-graph">Fit graph</button>
+        <span class="text-body-secondary small">Drag nodes or scroll to zoom. Hover over a cell or select an arrow for details.</span>
+      </div>
+      <div id="cell-graph" class="border rounded" role="img" aria-label="Instance dependency graph for {{ cell.name }}"></div>
+      <div id="graph-detail" class="text-body-secondary small mt-2" aria-live="polite">Cell names may be shortened in the graph. Select an arrow to see its instances.</div>
+
+      {% include 'cell_layout.html' %}
+
+      <div class="row g-4 mt-2">
+        <section class="col-lg-6" aria-labelledby="info-heading">
+          <div class="card h-100">
+            <div class="card-body">
+              <h2 class="h5" id="info-heading">Info</h2>
+              {% if info_data %}
+              <div class="json-tree">
+                {% for key, value in info_data.items() %}{{ json_node(key, value) }}{% endfor %}
+              </div>
+              {% else %}
+              <p class="text-body-secondary mb-0">No info recorded.</p>
+              {% endif %}
+              {% if info_extra %}
+              <h3 class="h6 mt-4">Additional data</h3>
+              <div class="json-tree">
+                {% for key, value in info_extra.items() %}{{ json_node(key, value) }}{% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </section>
+        <section class="col-lg-6" aria-labelledby="settings-heading">
+          <div class="card h-100">
+            <div class="card-body">
+              <h2 class="h5" id="settings-heading">Settings</h2>
+              {% if settings_data %}
+              <div class="json-tree">
+                {% for key, value in settings_data.items() %}{{ json_node(key, value) }}{% endfor %}
+              </div>
+              {% else %}
+              <p class="text-body-secondary mb-0">No settings recorded.</p>
+              {% endif %}
+              {% if settings_extra %}
+              <h3 class="h6 mt-4">Additional data</h3>
+              <div class="json-tree">
+                {% for key, value in settings_extra.items() %}{{ json_node(key, value) }}{% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {% if not instance_rows %}
+      <p class="text-body-secondary mt-5">This cell has no direct instances.</p>
+      {% else %}
+      <h2 class="h5 mt-5">Instances</h2>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th scope="col">Name</th><th scope="col">Cell</th><th scope="col">X</th><th scope="col">Y</th><th scope="col">Angle</th><th scope="col">Mirror</th></tr></thead>
+          <tbody>
+            {% for instance_name, child_id, child_name, trans in instance_rows %}
+            <tr>
+              <td>{{ instance_name }}</td>
+              <td><a href="{{ url_for('cell_page', cell_id=child_id) }}">{{ child_name }}</a></td>
+              <td>{{ trans.disp.x  }}</td>
+              <td>{{ trans.disp.y  }}</td>
+              <td>{{ trans.angle  }}</td>
+              <td>{{ trans.mirror  }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </main>
+
+    <script id="graph-data" type="application/json">{{ graph | tojson }}</script>
+    <script src="{{ url_for('static', path='/cytoscape.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/cell_graph.js') }}"></script>
+  </body>
+</html>

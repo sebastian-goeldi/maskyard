@@ -181,9 +181,14 @@ def deploy_locale(config: str, locale: str, version: str) -> None:
         default = "latest"
     subprocess.run([mike, "set-default", *options, default], cwd=ROOT, check=True)  # noqa: S603
     if locale == "en":
-        # The site root points to the English catalog, which selects its default version.
         subprocess.run(  # noqa: S603
-            [mike, "set-default", *common_options, "--allow-undefined", locale],
+            [
+                mike,
+                "set-default",
+                *common_options,
+                "--allow-undefined",
+                f"{locale}/{default}",
+            ],
             cwd=ROOT,
             check=True,
         )

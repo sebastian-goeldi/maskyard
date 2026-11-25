@@ -1,6 +1,8 @@
 # MaskYard
 
-<img src="logo.png" alt="MaskYard logo" width="360">
+<p align="center">
+  <img src="logo.png" alt="MaskYard logo" width="360">
+</p>
 
 ## Batched cell writes
 

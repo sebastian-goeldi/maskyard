@@ -1,0 +1,45 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+      - name: Check release version
+        run: |
+          version="$(uv version --short)"
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "Release tag $GITHUB_REF_NAME must match package version v$version."
+            exit 1
+          fi
+      - name: Build wheel and source distribution
+        run: uv build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maskyard-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/maskyard/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: maskyard-distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

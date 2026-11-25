@@ -286,6 +286,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    # --8<-- [start:chip-fill]
     top = chip()
     fill_cell = fill_wg()
     if not any(instance.cell_id == fill_cell.id for instance in top.instances):
@@ -310,6 +311,7 @@ def main() -> None:
             tile_size=(nm(200), nm(200)),
         )
     top.write(args.output)
+    # --8<-- [end:chip-fill]
     table = args.output.with_suffix(".csv")
     with table.open("w", newline="") as file:
         writer = csv.writer(file)

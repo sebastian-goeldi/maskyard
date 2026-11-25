@@ -1,0 +1,23 @@
+{% if page.meta and page.meta.alternate_href %}
+  <div class="md-header__option">
+    <div class="md-select">
+      {% set icon = config.theme.icon.alternate or "material/translate" %}
+      <button type="button" class="md-header__button md-icon" aria-label="{{ lang.t('select.language') }}">
+        {% include ".icons/" ~ icon ~ ".svg" %}
+      </button>
+      <div class="md-select__inner">
+        <ul class="md-select__list">
+          {% for code, language, name in (("en", "en", "English"), ("zh", "zh-Hans", "简体中文")) %}
+            <li class="md-select__item">
+              {% if config.theme.language == code %}
+                <a href="./" class="md-select__link" lang="{{ language }}" hreflang="{{ language }}" aria-current="page">{{ name }}</a>
+              {% else %}
+                <a href="{{ page.meta.alternate_href | e }}" class="md-select__link" lang="{{ language }}" hreflang="{{ language }}" data-locale-link>{{ name }}</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endif %}

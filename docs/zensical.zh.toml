@@ -1,0 +1,58 @@
+[project]
+site_name = "MaskYard"
+strict = true
+docs_dir = "source-built/zh"
+site_dir = "site/zh"
+nav = [
+  { "首页" = "index.md" },
+  { "入门" = [
+    { "安装" = "getting-started/installation.md" },
+    { "快速上手" = "getting-started/quickstart.md" },
+  ] },
+  { "核心概念" = [
+    { "单元、层与几何图形" = "concepts/layout.md" },
+    { "层次结构与端口" = "concepts/hierarchy.md" },
+    { "PDK 与参数化单元" = "concepts/pcells.md" },
+  ] },
+  { "操作指南" = [
+    { "配置数据库" = "how-to/database.md" },
+    { "打开版图查看器" = "how-to/viewer.md" },
+    { "批量写入单元" = "how-to/batched-writes.md" },
+    { "使用 Ray 运行参数化单元" = "how-to/ray.md" },
+  ] },
+  { "示例" = [{ "含 30 个 MZI 的芯片" = "examples/mzi.md" }] },
+  { "API 参考（英文）" = "reference/index.md" },
+]
+
+[project.theme]
+custom_dir = "overrides"
+font = false
+language = "zh"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle = { icon = "material/brightness-auto", name = "切换到浅色模式" }
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle = { icon = "material/brightness-7", name = "切换到深色模式" }
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle = { icon = "material/brightness-4", name = "跟随系统设置" }
+
+[project.markdown_extensions]
+attr_list = {}
+
+[project.markdown_extensions.pymdownx.snippets]
+base_path = ["docs/examples", "examples"]
+check_paths = true
+dedent_subsections = true
+
+[project.extra]
+alternate = true
+
+[project.extra.version]
+provider = "mike"

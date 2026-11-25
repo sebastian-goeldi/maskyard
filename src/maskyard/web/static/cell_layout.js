@@ -2,9 +2,24 @@ async function renderCellLayout() {
   const host = document.getElementById("cell-layout");
   const status = document.getElementById("layout-status");
   status.textContent = "Loading layout manifest…";
-  const response = await fetch(document.getElementById("layout-source").dataset.url);
-  if (!response.ok) throw new Error((await response.json()).detail || `HTTP ${response.status}`);
-  const data = await response.json();
+  const app = new PIXI.Application();
+  const initialScrolls = [];
+  function captureInitialScroll(event) {
+    if (!event.deltaY) return;
+    event.preventDefault();
+    const { clientX, clientY, deltaY } = event;
+    initialScrolls.push({ clientX, clientY, deltaY });
+  }
+  let data;
+  host.addEventListener("wheel", captureInitialScroll, { passive: false });
+  try {
+    const response = await fetch(document.getElementById("layout-source").dataset.url);
+    if (!response.ok) throw new Error((await response.json()).detail || `HTTP ${response.status}`);
+    data = await response.json();
+    await app.init({ resizeTo: host, background: 0x15191f, antialias: true });
+  } finally {
+    host.removeEventListener("wheel", captureInitialScroll);
+  }
   const colors = ["#4fc3f7", "#ff8a80", "#81c784", "#ffd54f", "#ba68c8", "#4dd0e1"];
   const patterns = ["solid", ["*...", "....", "....", "...."],
     ["*.*.", ".*.*", "*.*.", ".*.*"],
@@ -119,17 +134,22 @@ async function renderCellLayout() {
     });
     return { filter, texture };
   }
-  const app = new PIXI.Application();
-  await app.init({ resizeTo: host, background: 0x15191f, antialias: true });
   host.appendChild(app.canvas);
   app.canvas.style.cursor = "crosshair";
   app.canvas.style.touchAction = "none";
   const grid = new PIXI.Graphics();
+  const previewCanvas = document.createElement("canvas");
+  const previewContext = previewCanvas.getContext("2d");
+  const previewTexture = new PIXI.Texture({
+    source: new PIXI.CanvasSource({ resource: previewCanvas }), dynamic: true,
+  });
+  const preview = new PIXI.Sprite(previewTexture);
+  preview.eventMode = "none";
   const world = new PIXI.Container();
   const crosshair = new PIXI.Graphics();
   crosshair.eventMode = "none";
   crosshair.visible = false;
-  app.stage.addChild(grid, world, crosshair);
+  app.stage.addChild(grid, preview, world, crosshair);
   const layers = new Map();
   const groups = new Map();
   const layerStyles = new Map();
@@ -187,6 +207,9 @@ async function renderCellLayout() {
   world.addChild(coarseCells);
 
   const identity = [1, 0, 0, 1, 0, 0];
+  const minimumDetailPixels = 2;
+  const densePitchPixels = 8;
+  const arrayDetailPixels = 8;
   function multiply(a, b) {
     return [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1],
       a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3],
@@ -208,6 +231,57 @@ async function renderCellLayout() {
     }
     return out;
   }
+  function translated(box, x, y) {
+    return [box[0] + x, box[1] + y, box[2] + x, box[3] + y];
+  }
+  function projectedRange(box, x, y) {
+    return [Math.min(box[0] * x, box[2] * x) + Math.min(box[1] * y, box[3] * y),
+      Math.max(box[0] * x, box[2] * x) + Math.max(box[1] * y, box[3] * y)];
+  }
+  function arrayPlacement(instance, parent) {
+    const first = multiply(parent, instanceMatrix(instance.transform));
+    const [ax, ay] = instance.a, [bx, by] = instance.b;
+    const a = [parent[0] * ax + parent[2] * ay, parent[1] * ax + parent[3] * ay];
+    const b = [parent[0] * bx + parent[2] * by, parent[1] * bx + parent[3] * by];
+    const na = a[0] || a[1] ? instance.na : 1;
+    const nb = b[0] || b[1] ? instance.nb : 1;
+    return { first, a, b, na, nb };
+  }
+  function arrayExtent(firstBox, { a, b, na, nb }) {
+    const ax = (na - 1) * a[0], ay = (na - 1) * a[1];
+    const bx = (nb - 1) * b[0], by = (nb - 1) * b[1];
+    return [firstBox[0] + Math.min(0, ax) + Math.min(0, bx),
+      firstBox[1] + Math.min(0, ay) + Math.min(0, by),
+      firstBox[2] + Math.max(0, ax) + Math.max(0, bx),
+      firstBox[3] + Math.max(0, ay) + Math.max(0, by)];
+  }
+  function arrayDeterminant({ a, b }) {
+    const forward = a[0] * b[1], reverse = a[1] * b[0];
+    const det = forward - reverse;
+    return Math.abs(det) > 8 * Number.EPSILON * (Math.abs(forward) + Math.abs(reverse)) ? det : 0;
+  }
+  function visibleArrayRanges(box, view, array) {
+    const { a, b, na, nb } = array;
+    const window = [view[0] - box[2], view[1] - box[3], view[2] - box[0], view[3] - box[1]];
+    // Project the viewport expanded by the cell footprint into lattice coordinates.
+    // The resulting rectangle is conservative for rotated and oblique arrays.
+    const det = arrayDeterminant(array);
+    function clip([lo, hi], count) {
+      return [Math.max(0, Math.ceil(lo - 1e-8)), Math.min(count - 1, Math.floor(hi + 1e-8))];
+    }
+    if (na > 1 && nb > 1 && det !== 0) {
+      return [clip(projectedRange(window, b[1] / det, -b[0] / det), na),
+        clip(projectedRange(window, -a[1] / det, a[0] / det), nb)];
+    }
+    function range(step, count, other, otherCount) {
+      if (count === 1) return [0, 0];
+      const lengthSquared = step[0] ** 2 + step[1] ** 2;
+      const [lo, hi] = projectedRange(window, step[0] / lengthSquared, step[1] / lengthSquared);
+      const otherEnd = (otherCount - 1) * (step[0] * other[0] + step[1] * other[1]) / lengthSquared;
+      return clip([lo - Math.max(0, otherEnd), hi - Math.min(0, otherEnd)], count);
+    }
+    return [range(a, na, b, nb), range(b, nb, a, na)];
+  }
   function visible(box, viewport) {
     return box[0] <= viewport[2] && box[2] >= viewport[0]
       && box[1] <= viewport[3] && box[3] >= viewport[1];
@@ -221,7 +295,7 @@ async function renderCellLayout() {
 
   // The file stores boxes, polygon rings, and labels. Shapes are moved to a
   // chunk-local origin so GPU floats retain precision across a large reticle.
-  function decode(buffer, origin, style) {
+  async function decode(buffer, origin, style) {
     const view = new DataView(buffer);
     if (view.getUint32(0, true) !== 0x3142594d) throw new Error("Unknown layout chunk format");
     const fillContext = new PIXI.GraphicsContext();
@@ -230,7 +304,14 @@ async function renderCellLayout() {
     const strokeStyle = { color: style.frameColor, width: style.frameWidth, pixelLine: true };
     const texts = [];
     let pos = 4;
+    const sliceMs = 8;
+    let deadline = performance.now() + sliceMs;
     while (pos < view.byteLength) {
+      if (performance.now() >= deadline) {
+        // Give the browser a chance to process input before decoding more shapes.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        deadline = performance.now() + sliceMs;
+      }
       const tag = view.getUint8(pos++);
       if (tag === 1) {
         const x0 = view.getInt32(pos, true) - origin[0]; pos += 4;
@@ -322,7 +403,8 @@ async function renderCellLayout() {
           if (!reply.ok) throw new Error(`Chunk HTTP ${reply.status}`);
           return reply.arrayBuffer();
         })
-        .then((bytes) => loaded.set(item.key, decode(bytes, item.origin, item.style)))
+        .then((bytes) => decode(bytes, item.origin, item.style))
+        .then((content) => loaded.set(item.key, content))
         .catch((error) => {
           failed.add(item.key);
           failureMessage = `Could not load layout chunk: ${error.message}`;
@@ -369,37 +451,126 @@ async function renderCellLayout() {
     for (const id of metadataQueue) metadataPending.delete(id);
     metadataQueue = [];
     const view = viewport(), ancestors = new Set();
+    const scale = world.scale.x;
+    const previewPaths = new Map(), cellPreviews = new Map();
     let visibleChunks = 0;
     function drawCoarse(box) {
       coarseCells.rect(box[0], box[1], box[2] - box[0], box[3] - box[1])
         .stroke({ color: 0x687587, alpha: 0.6, pixelLine: true });
     }
-    function arrayBounds(instance, parent, childBox) {
-      const out = [Infinity, Infinity, -Infinity, -Infinity];
-      for (const ia of [0, instance.na - 1]) for (const ib of [0, instance.nb - 1]) {
-        const base = instance.transform;
-        const p = { ...base,
-          x: base.x + ia * instance.a[0] + ib * instance.b[0],
-          y: base.y + ia * instance.a[1] + ib * instance.b[1] };
-        const box = transformed(childBox, multiply(parent, instanceMatrix(p)));
-        out[0] = Math.min(out[0], box[0]); out[1] = Math.min(out[1], box[1]);
-        out[2] = Math.max(out[2], box[2]); out[3] = Math.max(out[3], box[3]);
+    function previewPath(layer, alpha, useFrame) {
+      if (!groups.get(layer).visible) return null;
+      const style = layerStyles.get(layer);
+      if (style.pattern === "hollow" && !style.frameWidth) return null;
+      const color = (useFrame && style.frameWidth) || style.pattern === "hollow"
+        ? style.frameColor : style.fillColor;
+      const key = `${color}:${alpha}`;
+      if (!previewPaths.has(key)) previewPaths.set(key, { color, alpha, path: new Path2D() });
+      return previewPaths.get(key).path;
+    }
+    function mark(layer, box) {
+      const path = previewPath(layer, 0.85, true);
+      if (!path) return;
+      const x = Math.floor(world.x + (box[0] + box[2]) / 2 * scale);
+      const y = Math.floor(world.y - (box[1] + box[3]) / 2 * scale);
+      path.rect(x, y, 1, 1);
+    }
+    function cellPreview(id) {
+      if (cellPreviews.has(id)) return cellPreviews.get(id);
+      const boxes = new Map();
+      cellPreviews.set(id, boxes);
+      function include(layer, box) {
+        const previous = boxes.get(layer);
+        boxes.set(layer, previous ? [Math.min(previous[0], box[0]),
+          Math.min(previous[1], box[1]), Math.max(previous[2], box[2]),
+          Math.max(previous[3], box[3])] : box);
       }
-      return out;
+      if (!metadataReady.has(id)) requestMetadata(id);
+      const cell = data.cells[id];
+      for (const layer of cell.layers) {
+        for (const chunk of layer.chunks) if (chunk.bbox) include(layer.id, chunk.bbox);
+      }
+      for (const instance of cell.instances) {
+        if (!data.cells[instance.cell]?.bbox) continue;
+        const array = arrayPlacement(instance, identity);
+        for (const [layer, box] of cellPreview(instance.cell)) {
+          include(layer, arrayExtent(transformed(box, array.first), array));
+        }
+      }
+      return boxes;
+    }
+    function coverage(layer, box, array) {
+      const { a, b, na, nb } = array;
+      const det = arrayDeterminant(array);
+      let u = a, v = b;
+      let uRange, vRange, density;
+      // A one-row fragment can still carry its original two-dimensional pitch.
+      // Use the same density as the adjacent arrays when both vectors are known.
+      if (det !== 0) {
+        uRange = projectedRange(box, b[1] / det, -b[0] / det);
+        vRange = projectedRange(box, -a[1] / det, a[0] / det);
+        uRange[1] += na - 1;
+        vRange[1] += nb - 1;
+        density = (box[2] - box[0]) * (box[3] - box[1]) / Math.abs(det);
+      } else {
+        u = na > 1 ? a : b;
+        const length = Math.hypot(...u);
+        v = [-u[1] / length, u[0] / length];
+        uRange = projectedRange(box, u[0] / length ** 2, u[1] / length ** 2);
+        vRange = projectedRange(box, ...v);
+        density = uRange[1] - uRange[0];
+        const end = (na - 1) * (a[0] * u[0] + a[1] * u[1]) / length ** 2;
+        const otherEnd = (nb - 1) * (b[0] * u[0] + b[1] * u[1]) / length ** 2;
+        uRange[0] += Math.min(0, end) + Math.min(0, otherEnd);
+        uRange[1] += Math.max(0, end) + Math.max(0, otherEnd);
+        const pad = Math.max(0, (1 / scale - (vRange[1] - vRange[0])) / 2);
+        vRange[0] -= pad;
+        vRange[1] += pad;
+      }
+      // Bucket estimated coverage so neighboring arrays can share one screen-space path.
+      const alpha = Math.round(2 + 7 * Math.min(1, Math.sqrt(density))) / 20;
+      const path = previewPath(layer, alpha, false);
+      if (!path) return;
+      const [u0, u1] = uRange, [v0, v1] = vRange;
+      function point(i, j) {
+        return [world.x + (i * u[0] + j * v[0]) * scale,
+          world.y - (i * u[1] + j * v[1]) * scale];
+      }
+      // Keep a consistent winding so overlapping patches do not cancel.
+      const reverse = u[0] * v[1] - u[1] * v[0] > 0;
+      path.moveTo(...point(u0, v0));
+      path.lineTo(...(reverse ? point(u0, v1) : point(u1, v0)));
+      path.lineTo(...point(u1, v1));
+      path.lineTo(...(reverse ? point(u1, v0) : point(u0, v1)));
+      path.closePath();
+    }
+    function paintPreview() {
+      preview.visible = previewPaths.size > 0;
+      if (!preview.visible) return;
+      const { width, height } = app.screen;
+      if (previewCanvas.width !== width || previewCanvas.height !== height) {
+        previewTexture.source.resize(width, height);
+      }
+      previewContext.clearRect(0, 0, width, height);
+      for (const { color, alpha, path } of previewPaths.values()) {
+        previewContext.fillStyle = color;
+        previewContext.globalAlpha = alpha;
+        previewContext.fill(path);
+      }
+      previewTexture.source.update();
     }
     function visit(id, matrix) {
       const cell = data.cells[id];
       if (!cell || ancestors.has(id)) return;
       const bounds = cell.bbox && transformed(cell.bbox, matrix);
       if (bounds && !visible(bounds, view)) return;
-      if (id !== data.root && bounds
-          && Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1]) * world.scale.x < 2) {
+      if (id !== data.root && bounds && Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1]) * scale < minimumDetailPixels) {
+        for (const [layer, box] of cellPreview(id)) mark(layer, transformed(box, matrix));
         return;
       }
       ancestors.add(id);
       if (!metadataReady.has(id)) {
-        if (id === data.root || !bounds || Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1])
-            * world.scale.x >= 2) requestMetadata(id);
+        requestMetadata(id);
         if (bounds) drawCoarse(bounds);
       }
       for (const [layerIndex, layer] of cell.layers.entries()) {
@@ -413,7 +584,7 @@ async function renderCellLayout() {
           const origin = [chunk.bbox[0], chunk.bbox[1]];
           const shifted = multiply(matrix, [1, 0, 0, 1, ...origin]);
           const size = Math.max(box[2] - box[0], box[3] - box[1]) * world.scale.x;
-          if (size < 2) continue;
+          if (size < minimumDetailPixels) { mark(layer.id, box); continue; }
           visibleChunks++;
           const key = `${id}:${layerIndex}:${chunkIndex}`;
           wanted.add(key);
@@ -427,24 +598,59 @@ async function renderCellLayout() {
       for (const instance of cell.instances) {
         const child = data.cells[instance.cell];
         if (!child?.bbox) continue;
-        const first = multiply(matrix, instanceMatrix(instance.transform));
+        const array = arrayPlacement(instance, matrix);
+        const { first, a, b, na, nb } = array;
         const childExtent = transformed(child.bbox, first);
-        const childSize = Math.max(childExtent[2] - childExtent[0],
-          childExtent[3] - childExtent[1]) * world.scale.x;
-        if (childSize < (instance.na > 1 || instance.nb > 1 ? 8 : 2)) continue;
-        const extent = arrayBounds(instance, matrix, child.bbox);
+        const extent = arrayExtent(childExtent, array);
         if (!visible(extent, view)) continue;
-        for (let ib = 0; ib < instance.nb; ib++) for (let ia = 0; ia < instance.na; ia++) {
-          const base = instance.transform;
-          const placement = { ...base,
-            x: base.x + ia * instance.a[0] + ib * instance.b[0],
-            y: base.y + ia * instance.a[1] + ib * instance.b[1] };
-          visit(instance.cell, multiply(matrix, instanceMatrix(placement)));
+        const childSize = Math.max(childExtent[2] - childExtent[0], childExtent[3] - childExtent[1]) * scale;
+        const pitchA = na > 1 ? Math.hypot(...a) * scale : 0;
+        const pitchB = nb > 1 ? Math.hypot(...b) * scale : 0;
+        const pitch = Math.max(pitchA, pitchB);
+        if (pitch > 0 && pitch < densePitchPixels && childSize < arrayDetailPixels) {
+          for (const [layer, box] of cellPreview(instance.cell)) {
+            coverage(layer, transformed(box, first), array);
+          }
+          continue;
+        }
+        if (na === 1 && nb === 1) {
+          visit(instance.cell, first);
+          continue;
+        }
+        const [[minA, maxA], [minB, maxB]] = visibleArrayRanges(childExtent, view, array);
+        const denseA = pitchA > 0 && pitchA < densePitchPixels;
+        const denseB = pitchB > 0 && pitchB < densePitchPixels;
+        if (childSize < arrayDetailPixels && (denseA || denseB)) {
+          // One axis has visible gaps. Draw each visible strip along the denser axis.
+          const strip = denseA ? { ...array, b: [0, 0], nb: 1 } : { ...array, a: [0, 0], na: 1 };
+          const step = denseA ? b : a;
+          const [lo, hi] = denseA ? [minB, maxB] : [minA, maxA];
+          const layerBoxes = [...cellPreview(instance.cell)].map(([layer, box]) =>
+            [layer, transformed(box, first)]);
+          for (let index = lo; index <= hi; index++) {
+            const x = index * step[0], y = index * step[1];
+            if (!visible(arrayExtent(translated(childExtent, x, y), strip), view)) continue;
+            for (const [layer, box] of layerBoxes) coverage(layer, translated(box, x, y), strip);
+          }
+          continue;
+        }
+        const marks = childSize < arrayDetailPixels && pitch < 2 * densePitchPixels
+          ? [...cellPreview(instance.cell)].map(([layer, box]) => [layer, transformed(box, first)])
+          : null;
+        for (let ib = minB; ib <= maxB; ib++) for (let ia = minA; ia <= maxA; ia++) {
+          const x = ia * a[0] + ib * b[0], y = ia * a[1] + ib * b[1];
+          if (!visible(translated(childExtent, x, y), view)) continue;
+          if (marks) {
+            for (const [layer, box] of marks) mark(layer, translated(box, x, y));
+          } else {
+            visit(instance.cell, [first[0], first[1], first[2], first[3], first[4] + x, first[5] + y]);
+          }
         }
       }
       ancestors.delete(id);
     }
     visit(data.root, identity);
+    paintPreview();
     pumpMetadata();
     for (const [key, value] of loaded) {
       if (loaded.size <= 256) break;
@@ -602,8 +808,7 @@ async function renderCellLayout() {
     pointerPosition = null;
     updateOverlay();
   });
-  app.canvas.addEventListener("wheel", (event) => {
-    event.preventDefault();
+  function zoomAt(event) {
     const [x, y] = canvasPosition(event);
     pointerPosition = [x, y];
     const oldScale = world.scale.x;
@@ -613,6 +818,16 @@ async function renderCellLayout() {
     const worldY = (world.y - y) / oldScale;
     world.scale.set(nextScale, -nextScale);
     world.position.set(x - worldX * nextScale, y + worldY * nextScale);
+  }
+  if (initialScrolls.length) {
+    for (const scroll of initialScrolls) zoomAt(scroll);
+    updateGrid();
+    updateOverlay();
+  }
+  app.canvas.addEventListener("wheel", (event) => {
+    if (!event.deltaY) return;
+    event.preventDefault();
+    zoomAt(event);
     updateGrid();
     updateOverlay();
     refreshSoon();

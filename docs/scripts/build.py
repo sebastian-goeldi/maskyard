@@ -40,8 +40,6 @@ class LocaleLinks(HTMLParser):
 def locale_root(locale: str, version: str | None) -> Path:
     if version is None:
         return SITE / locale
-    if locale == "en":
-        return VERSION_SITE / version
     return VERSION_SITE / locale / version
 
 
@@ -136,19 +134,17 @@ def build(version: str | None = None) -> None:
 
 
 def deploy_locale(config: str, locale: str, version: str) -> None:
-    # English uses Mike's root catalog. Chinese uses the same layout under /zh/.
     mike = Path(sys.executable).with_name("mike")
     if os.name == "nt":
         mike = mike.with_suffix(".exe")
-    options = [
+    common_options = [
         "-F",
         config,
         "--branch",
         VERSION_BRANCH,
-        "--deploy-prefix",
-        "" if locale == "en" else locale,
         "--ignore-remote-status",
     ]
+    options = [*common_options, "--deploy-prefix", locale]
     subprocess.run(  # noqa: S603
         [mike, "deploy", *options, "--alias-type", "copy", version],
         cwd=ROOT,
@@ -184,6 +180,13 @@ def deploy_locale(config: str, locale: str, version: str) -> None:
             )
         default = "latest"
     subprocess.run([mike, "set-default", *options, default], cwd=ROOT, check=True)  # noqa: S603
+    if locale == "en":
+        # The site root points to the English catalog, which selects its default version.
+        subprocess.run(  # noqa: S603
+            [mike, "set-default", *common_options, "--allow-undefined", locale],
+            cwd=ROOT,
+            check=True,
+        )
 
 
 if __name__ == "__main__":

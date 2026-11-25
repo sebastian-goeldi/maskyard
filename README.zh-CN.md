@@ -27,7 +27,7 @@ printf 'Outputs are in %s\n' "$scratch"
 
 [English](docs/source/en/index.md) · [简体中文](docs/source/zh/index.md)
 
-从成功的 GitHub Actions 运行中下载 **maskyard-docs**，解压到 `docs/site/` 即可浏览各个版本。网站默认打开最新发布版本的英文文档。首次发布前，默认打开 `dev` 版本。可通过页眉中的语言菜单切换到简体中文。要在本地预览当前检出的文档，运行以下命令后访问 `http://127.0.0.1:8000/`。
+从成功的 GitHub Actions 运行中下载 **maskyard-docs**，解压到 `docs/site/` 即可浏览各个版本。网站默认打开 `/en/latest/`，首次发布前则打开 `/en/dev/`。可通过页眉中的语言菜单切换到简体中文。要在本地预览当前检出的文档，运行以下命令后访问 `http://127.0.0.1:8000/`。
 
 ```sh
 just docs-serve

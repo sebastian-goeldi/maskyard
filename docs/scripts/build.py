@@ -18,7 +18,7 @@ SOURCE = DOCS / "source"
 STAGED = DOCS / "source-built"
 SITE = DOCS / "site"
 VERSION_SITE = DOCS / "_build" / "versioned-site"
-VERSION_BRANCH = "docs-versions"
+VERSION_BRANCH = "gh-pages"
 
 
 class LocaleLinks(HTMLParser):
@@ -37,6 +37,14 @@ class LocaleLinks(HTMLParser):
             self.links.append(href)
 
 
+def locale_root(locale: str, version: str | None) -> Path:
+    if version is None:
+        return SITE / locale
+    if locale == "en":
+        return VERSION_SITE / version
+    return VERSION_SITE / locale / version
+
+
 def build(version: str | None = None) -> None:
     guides = {
         locale: {
@@ -50,13 +58,9 @@ def build(version: str | None = None) -> None:
         message = f"Unpaired documentation pages: {sorted(guides['en'] ^ guides['zh'])}"
         raise SystemExit(message)
 
-    output_root = VERSION_SITE if version else SITE
     for locale, other in (("en", "zh"), ("zh", "en")):
-        locale_root = output_root / locale
-        other_root = output_root / other
-        if version:
-            locale_root /= version
-            other_root /= version
+        current_root = locale_root(locale, version)
+        other_root = locale_root(other, version)
         staged = STAGED / locale
         if staged.exists():
             shutil.rmtree(staged)
@@ -72,7 +76,7 @@ def build(version: str | None = None) -> None:
             )
             # Header links are emitted by the template, relative to the HTML page.
             alternate_href = os.path.relpath(
-                other_root / counterpart, locale_root / directory
+                other_root / counterpart, current_root / directory
             ).replace(os.sep, "/")
             content = path.read_text(encoding="utf-8")
             content = content.replace(
@@ -111,14 +115,14 @@ def build(version: str | None = None) -> None:
             with ZipFile(archive) as site_archive:
                 site_archive.extractall(VERSION_SITE)
 
-    shutil.copy2(DOCS / "index.html", output_root / "index.html")
+    else:
+        shutil.copy2(DOCS / "index.html", SITE / "index.html")
+
     for locale in ("en", "zh"):
-        locale_root = output_root / locale
-        if version:
-            locale_root /= version
+        current_root = locale_root(locale, version)
         for page in (SOURCE / locale).rglob("*.md"):
             relative = page.relative_to(SOURCE / locale)
-            output = locale_root / relative
+            output = current_root / relative
             if output.name != "index.md":
                 output = output.with_suffix("") / "index.md"
             output = output.with_suffix(".html")
@@ -132,7 +136,7 @@ def build(version: str | None = None) -> None:
 
 
 def deploy_locale(config: str, locale: str, version: str) -> None:
-    # Use independent Mike catalogs so the selector always stays in its locale.
+    # English uses Mike's root catalog. Chinese uses the same layout under /zh/.
     mike = Path(sys.executable).with_name("mike")
     if os.name == "nt":
         mike = mike.with_suffix(".exe")
@@ -142,19 +146,43 @@ def deploy_locale(config: str, locale: str, version: str) -> None:
         "--branch",
         VERSION_BRANCH,
         "--deploy-prefix",
-        locale,
+        "" if locale == "en" else locale,
         "--ignore-remote-status",
     ]
-    subprocess.run([mike, "deploy", *options, version], cwd=ROOT, check=True)  # noqa: S603
+    subprocess.run(  # noqa: S603
+        [mike, "deploy", *options, "--alias-type", "copy", version],
+        cwd=ROOT,
+        check=True,
+    )
     catalog = subprocess.check_output(  # noqa: S603
         [mike, "list", *options, "--json"], cwd=ROOT
     )
     releases = [
-        entry["version"] for entry in json.loads(catalog) if entry["version"] != "dev"
+        entry
+        for entry in json.loads(catalog)
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", entry["version"])
     ]
-    default = max(
-        releases, key=lambda value: tuple(map(int, value.split("."))), default="dev"
-    )
+    default = "dev"
+    if releases:
+        latest = max(
+            releases, key=lambda entry: tuple(map(int, entry["version"].split(".")))
+        )
+        if "latest" not in latest["aliases"]:
+            subprocess.run(  # noqa: S603
+                [
+                    mike,
+                    "alias",
+                    *options,
+                    "--update-aliases",
+                    "--alias-type",
+                    "copy",
+                    latest["version"],
+                    "latest",
+                ],
+                cwd=ROOT,
+                check=True,
+            )
+        default = "latest"
     subprocess.run([mike, "set-default", *options, default], cwd=ROOT, check=True)  # noqa: S603
 
 

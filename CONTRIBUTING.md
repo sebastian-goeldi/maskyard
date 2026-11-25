@@ -31,12 +31,18 @@ translations. Review Chinese prose in the site alongside its English counterpart
 
 CI uses the Zensical-compatible `mike` fork to archive both languages. Pushes
 to `main` refresh `dev`, and tags in the form `vX.Y.Z` add a release snapshot.
-The `docs-versions` branch stores the snapshots and both version catalogs.
-Pull requests build a local `dev` snapshot for their artifact. Open `/en/dev/`
-or `/zh/dev/` to preview it when the artifact also contains releases.
+Mike stores the snapshots and version catalogs on `gh-pages`. English uses
+`/dev/`, `/X.Y.Z/`, and `/latest/`. Simplified Chinese uses the same paths
+under `/zh/`. `latest` is a copy of the highest numbered release and serves as
+the default once a release is available. Before then, the site opens `dev`.
+Pull requests build `dev` for their artifact. Open `/dev/` or `/zh/dev/` to
+preview the PR when the artifact also contains releases.
+
+When the repository's Pages source is **GitHub Actions**, the workflow publishes
+the same versioned tree that it saves to `gh-pages`.
 
 To test a versioned build locally, run the following from the repository root
-with a Git author identity configured. It updates a local `docs-versions`
+with a Git author identity configured. It updates a local `gh-pages`
 branch and exports the browsable artifact.
 
 ```sh

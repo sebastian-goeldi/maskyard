@@ -30,8 +30,8 @@ printf 'Outputs are in %s\n' "$scratch"
 [English](docs/source/en/index.md) · [简体中文](docs/source/zh/index.md)
 
 Download **maskyard-docs** from a successful GitHub Actions run and extract it
-into `docs/site/` to browse available versions. The site opens the latest release in
-English, or `dev` before the first release. Use the language menu in the header
+into `docs/site/` to browse available versions. The site opens `/latest/` in
+English, or `/dev/` before the first release. Use the language menu in the header
 to switch to Simplified Chinese. For a quick local preview, build the current
 checkout and open `http://127.0.0.1:8000/`.
 

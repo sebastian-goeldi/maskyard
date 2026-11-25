@@ -4,80 +4,51 @@ on:
   pull_request:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: ['**']
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
 
-concurrency:
-  group: docs-${{ github.event_name == 'pull_request' && github.ref || 'versions' }}
-  cancel-in-progress: false
+permissions:
+  contents: read
 
 jobs:
-  docs:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: read
-    outputs:
-      publish_pages: ${{ steps.pages-config.outputs.enabled }}
-    env:
-      PUBLISH: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: ${{ env.PUBLISH == 'true' }}
       - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-      - name: Build versioned docs
-        env:
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-        run: |
-          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
-            git branch gh-pages origin/gh-pages
-          fi
-          version=dev
-          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
-            version="${GITHUB_REF_NAME#v}"
-          fi
-          uv run --locked --group docs python docs/scripts/build.py --version "$version"
+      - run: uv run --locked --group docs --extra web python docs/scripts/build.py
       - run: uv run --locked --group docs --extra web python docs/scripts/check_examples.py
       - uses: actions/upload-artifact@v7
         with:
           name: maskyard-docs
-          path: docs/_build/versioned-site/
-          if-no-files-found: error
-      - name: Save version history
-        if: env.PUBLISH == 'true'
-        run: git push origin gh-pages
-      - name: Check GitHub Pages publishing source
-        if: env.PUBLISH == 'true'
-        id: pages-config
+          path: docs/site/
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    concurrency:
+      group: docs-deploy
+      queue: max
+    permissions:
+      contents: write
+      pages: write
+    env:
+      DOCS_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+      GIT_AUTHOR_NAME: github-actions[bot]
+      GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+      GIT_COMMITTER_NAME: github-actions[bot]
+      GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Publish with Mike
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.build_type')" == workflow ]]; then
-            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          if [[ "$DOCS_VERSION" == dev ]]; then
+            main_tip=$(git ls-remote --refs origin refs/heads/main | cut -f1)
+            [[ "$main_tip" == "$GITHUB_SHA" ]] || exit 0
           fi
-      - uses: actions/upload-pages-artifact@v4
-        if: steps.pages-config.outputs.enabled == 'true'
-        with:
-          path: docs/_build/versioned-site/
-
-  pages:
-    needs: docs
-    if: needs.docs.outputs.publish_pages == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - uses: actions/deploy-pages@v4
-        id: deploy
+          uv run --locked --group docs python docs/scripts/build.py --version "${DOCS_VERSION#v}" --push
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"

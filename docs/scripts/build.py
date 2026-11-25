@@ -10,6 +10,7 @@ import sys
 from html.parser import HTMLParser
 from pathlib import Path
 from tempfile import TemporaryFile
+from uuid import uuid4
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,7 +44,7 @@ def locale_root(locale: str, version: str | None) -> Path:
     return VERSION_SITE / locale / version
 
 
-def build(version: str | None = None) -> None:
+def build(version: str | None = None, branch: str = VERSION_BRANCH) -> None:
     guides = {
         locale: {
             path.relative_to(SOURCE / locale)
@@ -92,7 +93,7 @@ def build(version: str | None = None) -> None:
 
         config = str(DOCS / f"zensical.{locale}.toml")
         if version:
-            deploy_locale(config, locale, version)
+            deploy_locale(config, locale, version, branch)
         else:
             subprocess.run(  # noqa: S603
                 [sys.executable, "-m", "zensical", "build", "--clean", "-f", config],
@@ -105,7 +106,7 @@ def build(version: str | None = None) -> None:
             shutil.rmtree(VERSION_SITE)
         with TemporaryFile() as archive:
             subprocess.run(  # noqa: S603
-                ["git", "archive", "--format=zip", VERSION_BRANCH],  # noqa: S607
+                ["git", "archive", "--format=zip", branch],  # noqa: S607
                 cwd=ROOT,
                 stdout=archive,
                 check=True,
@@ -133,7 +134,7 @@ def build(version: str | None = None) -> None:
                 raise SystemExit(f"Broken or missing language switch in {output}")
 
 
-def deploy_locale(config: str, locale: str, version: str) -> None:
+def deploy_locale(config: str, locale: str, version: str, branch: str) -> None:
     mike = Path(sys.executable).with_name("mike")
     if os.name == "nt":
         mike = mike.with_suffix(".exe")
@@ -141,7 +142,7 @@ def deploy_locale(config: str, locale: str, version: str) -> None:
         "-F",
         config,
         "--branch",
-        VERSION_BRANCH,
+        branch,
         "--ignore-remote-status",
     ]
     options = [*common_options, "--deploy-prefix", locale]
@@ -194,12 +195,72 @@ def deploy_locale(config: str, locale: str, version: str) -> None:
         )
 
 
+def publish(version: str) -> None:
+    git = shutil.which("git")
+    if git is None:
+        raise SystemExit("Git is required to publish docs")
+
+    # Build on a private local ref, including when gh-pages is checked out elsewhere.
+    branch = f"maskyard-docs-{uuid4().hex}"
+    staging_ref = f"refs/heads/{branch}"
+    pages_ref = f"refs/heads/{VERSION_BRANCH}"
+
+    def remote_tip() -> str:
+        result = subprocess.check_output(  # noqa: S603
+            [git, "ls-remote", "--refs", "origin", pages_ref], cwd=ROOT, text=True
+        )
+        return result.partition("\t")[0]
+
+    try:
+        for attempt in range(3):
+            base = remote_tip()
+            if base:
+                subprocess.run(  # noqa: S603
+                    [git, "fetch", "--no-tags", "origin", pages_ref],
+                    cwd=ROOT,
+                    check=True,
+                )
+                base = subprocess.check_output(  # noqa: S603
+                    [git, "rev-parse", "FETCH_HEAD"], cwd=ROOT, text=True
+                ).strip()
+                subprocess.run(  # noqa: S603
+                    [git, "update-ref", staging_ref, base], cwd=ROOT, check=True
+                )
+            build(version, branch)
+            push = subprocess.run(  # noqa: S603
+                [git, "push", "origin", f"{staging_ref}:{pages_ref}"],
+                cwd=ROOT,
+                check=False,
+            )
+            if push.returncode == 0:
+                return
+            current = remote_tip()
+            if attempt == 2 or not current or current == base:
+                push.check_returncode()
+            print(
+                "gh-pages advanced during the build. Rebuilding on its new tip.",
+                flush=True,
+            )
+    finally:
+        subprocess.run(  # noqa: S603
+            [git, "update-ref", "-d", staging_ref], cwd=ROOT, check=True
+        )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", help="Store dev or a release (X.Y.Z) with Mike")
+    parser.add_argument(
+        "--push", action="store_true", help="Publish the version to origin/gh-pages"
+    )
     args = parser.parse_args()
     if args.version and not re.fullmatch(
         r"dev|(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*)){2}", args.version
     ):
         parser.error("--version must be dev or X.Y.Z")
-    build(args.version)
+    if args.push:
+        if args.version is None:
+            parser.error("--push requires --version")
+        publish(args.version)
+    else:
+        build(args.version)

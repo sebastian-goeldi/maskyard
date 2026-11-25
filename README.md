@@ -29,11 +29,13 @@ printf 'Outputs are in %s\n' "$scratch"
 
 [English](docs/source/en/index.md) · [简体中文](docs/source/zh/index.md)
 
-Download **maskyard-docs** from a successful GitHub Actions run and extract it
-into `docs/site/` to browse available versions. The site opens `/en/latest/`,
-or `/en/dev/` before the first release. Use the language menu in the header
-to switch to Simplified Chinese. For a quick local preview, build the current
-checkout and open `http://127.0.0.1:8000/`.
+The [published docs](https://sebastian-goeldi.github.io/maskyard/) open the latest
+release in English. Use the header menus to select a version or switch to
+Simplified Chinese. Every docs workflow run builds a `maskyard-docs` preview
+artifact. Pushes to `main` update `dev`, and tags such as `v0.0.2` publish numbered
+versions to the `gh-pages` branch.
+
+For a local preview, build the current checkout and open `http://127.0.0.1:8000/`.
 
 ```sh
 just docs-serve
@@ -46,7 +48,8 @@ uv run --locked --group docs python docs/scripts/build.py
 uv run --locked python -m http.server 8000 --bind 127.0.0.1 --directory docs/site
 ```
 
-See [Working on the docs](docs/CONTRIBUTING.md) for the translation workflow.
+To publish manually with your Git credentials, use `just docs-deploy-dev` from
+`main` or `just docs-deploy-release 0.0.2` from the corresponding tagged checkout.
 
 ## License
 

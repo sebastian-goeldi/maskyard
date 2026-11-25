@@ -1,5 +1,7 @@
 # MaskYard
 
+<img src="logo.png" alt="MaskYard logo" width="360">
+
 ## Batched cell writes
 
 Build new cells without attaching them to a worker thread's database session, then

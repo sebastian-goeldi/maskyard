@@ -112,13 +112,15 @@ class Cell(SQLModel, table=True):
         name: str | None = None,
         a: kdb.Vector | None = None,
         b: kdb.Vector | None = None,
+        na: int = 0,
+        nb: int = 0,
         trans: kdb.Trans | kdb.DCplxTrans | kdb.ICplxTrans | kdb.DTrans | None = None,
     ) -> Instance:
         session = get_context_session(self)
         session.add(self)
         session.add(cell)
         session.flush()
-        inst = self.add_instance(cell, name=name, a=a, b=b, trans=trans)
+        inst = self.add_instance(cell, name=name, a=a, b=b, na=na, nb=nb, trans=trans)
         session.commit()
         return inst
 
@@ -129,6 +131,8 @@ class Cell(SQLModel, table=True):
         name: str | None = None,
         a: kdb.Vector | None = None,
         b: kdb.Vector | None = None,
+        na: int = 0,
+        nb: int = 0,
         trans: kdb.Trans | kdb.DCplxTrans | kdb.ICplxTrans | kdb.DTrans | None = None,
     ) -> Instance:
         """Attach an instance without flushing or committing the session."""
@@ -142,6 +146,8 @@ class Cell(SQLModel, table=True):
             trans_ = trans
         else:
             trans_ = kdb.ICplxTrans(trans.to_itype(self.dbu))
+        if (na > 0 and nb < 1) or (na < 1 and nb > 0):
+            raise ValueError("If na is not 0, nb must not be 0 and vice versa.")
 
         inst = Instance(
             name=name,
@@ -150,6 +156,8 @@ class Cell(SQLModel, table=True):
             cell=cell,
             a=a if a is not None else kdb.Vector(),
             b=b if b is not None else kdb.Vector(),
+            na=na,
+            nb=nb,
         )
         self.instances.append(inst)
         return inst

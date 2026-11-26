@@ -1528,6 +1528,117 @@
 
     <div class="doc doc-contents first">
 
+        <p>Create an empty cell with geometry, metadata, and settings.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Explicit cell name, or None to consume the active PCell's automatic name.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>pdk</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Pdk (maskyard.models.pdk.Pdk)" href="./#maskyard.Pdk">Pdk</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional process design kit that owns the cell.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>persist</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to add the cell to the current session for a later commit.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The newly initialized cell.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="maskyard.serialization.CellNameError">CellNameError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If a name is required and the automatic name is unavailable.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
 
     </div>
 
@@ -1582,6 +1693,8 @@
 
     <div class="doc doc-contents ">
 
+        <p>Return the mutable collection of local shapes on a layer.</p>
+
 
     </div>
 
@@ -1604,6 +1717,127 @@
 
     <div class="doc doc-contents ">
 
+        <p>Look up a registered layer by number and datatype or by name.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>layer</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Numeric layer identifier. Supply it together with datatype.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>datatype</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Numeric datatype within the layer.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Layer name to look up or use as an additional filter.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="maskyard.kdb.LayerInfo">LayerInfo</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The matching layer as KLayout layer information.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the identifiers are incomplete.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="LookupError">LookupError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If no matching layer is registered.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
 
     </div>
 
@@ -1623,6 +1857,180 @@
         <p>Attach an instance without flushing or committing the session.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Cell to reference.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional name for the new instance.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>a</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.kdb.Vector">Vector</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>First array step in DBU. Defaults to the zero vector.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>b</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.kdb.Vector">Vector</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Second array step in DBU. Defaults to the zero vector.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>na</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of placements along the first array axis.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>nb</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of placements along the second array axis.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>trans</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.kdb.Trans">Trans</span> | <span title="maskyard.kdb.DCplxTrans">DCplxTrans</span> | <span title="maskyard.kdb.ICplxTrans">ICplxTrans</span> | <span title="maskyard.kdb.DTrans">DTrans</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Initial placement, converted to integer DBU. Defaults to the
+identity.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Instance (maskyard.models.instance.Instance)" href="./#maskyard.Instance">Instance</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The new instance attached to the parent cell.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If only one array axis has a positive count.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
     </div>
 
 </div>
@@ -1637,6 +2045,144 @@
 
 
     <div class="doc doc-contents ">
+
+        <p>Create a port on this cell and commit it.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name assigned to the port. Also used for cross-section lookup when
+cross_section is a string.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cross_section</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <a class="autorefs autorefs-internal" title="maskyard.SymmetricCrossSection (maskyard.models.cross_section.SymmetricCrossSection)" href="./#maskyard.SymmetricCrossSection">SymmetricCrossSection</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Cross-section object, or a string to request a name lookup.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>info</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="maskyard.typing.JSONSerializable">JSONSerializable</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional metadata passed to the port constructor.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>trans</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.kdb.Trans">Trans</span> | <span title="maskyard.kdb.DCplxTrans">DCplxTrans</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Placement as an integer or complex micrometer transform.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="maskyard.kdb.Trans.R0">R0</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.CellPort (maskyard.models.port.CellPort)" href="./#maskyard.CellPort">CellPort</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The committed port.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>NoResultFound</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the name lookup finds no cross section.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>MultipleResultsFound</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the name lookup finds more than one cross section.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -1657,6 +2203,92 @@
         <p>Attach a port without flushing or committing the session.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name assigned to the port.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cross_section</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.SymmetricCrossSection (maskyard.models.cross_section.SymmetricCrossSection)" href="./#maskyard.SymmetricCrossSection">SymmetricCrossSection</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Cross section that defines the port.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>trans</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.kdb.Trans">Trans</span> | <span title="maskyard.kdb.DCplxTrans">DCplxTrans</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Placement to copy into the new port.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="maskyard.kdb.Trans.R0">R0</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.CellPort (maskyard.models.port.CellPort)" href="./#maskyard.CellPort">CellPort</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The new port attached to this cell.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
     </div>
 
 </div>
@@ -1671,6 +2303,95 @@
 
 
     <div class="doc doc-contents ">
+
+        <p>Query the current cell's saved instances by name.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Instance name within the parent cell.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Instance (maskyard.models.instance.Instance)" href="./#maskyard.Instance">Instance</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The matching instance.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>NoResultFound</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If no instance matches.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>MultipleResultsFound</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If more than one instance matches.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -1688,6 +2409,95 @@
 
     <div class="doc doc-contents ">
 
+        <p>Query the current cell's saved ports by name.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Port name within the cell.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.CellPort (maskyard.models.port.CellPort)" href="./#maskyard.CellPort">CellPort</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The matching port.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>NoResultFound</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If no port matches.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>MultipleResultsFound</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If more than one port matches.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
 
     </div>
 
@@ -1703,6 +2513,56 @@
 
 
     <div class="doc doc-contents ">
+
+        <p>Export this cell and its referenced hierarchy to a layout file.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span> | <span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Destination path. KLayout infers the format from its extension.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>options</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.kdb.SaveLayoutOptions">SaveLayoutOptions</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Reserved save options. The current implementation uses KLayout
+defaults.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -1766,6 +2626,101 @@
 
     <div class="doc doc-contents ">
 
+        <p>Create an empty cell associated with this PDK.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Explicit name, or None to use the active factory's automatic name.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>persist</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to add the cell to the current session for a later commit.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The newly initialized cell.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the PDK has no name.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
 
     </div>
 
@@ -1782,27 +2737,23 @@
 <div class="doc-signature highlight"><pre><span></span><code><span class="nf">pcell</span><span class="p">(</span><span class="n">function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Cell</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Cell</span><span class="p">]</span>
 </code></pre></div><div class="doc-signature highlight"><pre><span></span><code><span class="nf">pcell</span><span class="p">(</span>
     <span class="n">function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Cell</span><span class="p">],</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">ray</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="kc">True</span><span class="p">]</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RemotePCell</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RemotePCell</span><span class="p">[</span><span class="n">P</span><span class="p">]</span>
 </code></pre></div><div class="doc-signature highlight"><pre><span></span><code><span class="nf">pcell</span><span class="p">(</span>
     <span class="n">function</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">/</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">ray</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="kc">True</span><span class="p">],</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Cell</span><span class="p">]],</span> <span class="n">RemotePCell</span><span class="p">]</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Unpack</span><span class="p">[</span><span class="n">_PCellOptions</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Cell</span><span class="p">]],</span> <span class="n">RemotePCell</span><span class="p">[</span><span class="n">P</span><span class="p">]]</span>
 </code></pre></div><div class="doc-signature highlight"><pre><span></span><code><span class="nf">pcell</span><span class="p">(</span>
     <span class="n">function</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">/</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">drop_params</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"self"</span><span class="p">,</span> <span class="s2">"cls"</span><span class="p">),</span>
-    <span class="n">type_serializers</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span>
-        <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span> <span class="o">|</span> <span class="n">UnionType</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]]</span>
-    <span class="p">]</span> <span class="o">=</span> <span class="p">((</span><span class="n">SymmetricCrossSection</span><span class="p">,</span> <span class="n">attrgetter</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)),),</span>
-    <span class="n">type_hints_serializer</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
-        <span class="nb">type</span> <span class="o">|</span> <span class="n">UnionType</span> <span class="o">|</span> <span class="n">TypeAliasType</span><span class="p">,</span>
-        <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">],</span>
-    <span class="p">]</span>
-    <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">type_serializers</span><span class="p">:</span> <span class="n">_TypeSerializers</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">SymmetricCrossSection</span><span class="p">,</span> <span class="n">attrgetter</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)),</span>
+    <span class="p">),</span>
+    <span class="n">type_hints_serializer</span><span class="p">:</span> <span class="n">_SerializerMap</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">use_writer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">ray</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="kc">False</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Cell</span><span class="p">]],</span> <span class="n">Callable</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">Cell</span><span class="p">]]</span>
@@ -1811,7 +2762,188 @@
 
     <div class="doc doc-contents ">
 
-        <p>Cache and persist cells built by decorated factories.</p>
+        <p>Register a parametrized cell factory and reuse cells for matching inputs.</p>
+<p>Factory source changes invalidate the corresponding dependency registration.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>function</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Callable">Callable</span>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>, <a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Factory to decorate directly. Omit it to configure a decorator.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>drop_params</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Sequence">Sequence</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Parameter names excluded from cache keys.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(&#39;self&#39;, &#39;cls&#39;)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>type_serializers</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.models.pdk._TypeSerializers">_TypeSerializers</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ordered (type, serializer) pairs for matching argument
+values.</p>
+              </div>
+            </td>
+            <td>
+                  <code>((<a class="autorefs autorefs-internal" title="maskyard.SymmetricCrossSection (maskyard.models.cross_section.SymmetricCrossSection)" href="./#maskyard.SymmetricCrossSection">SymmetricCrossSection</a>, <span title="operator.attrgetter">attrgetter</span>(&#39;id&#39;)),)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>type_hints_serializer</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.models.pdk._SerializerMap">_SerializerMap</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Serializers selected by the factory's annotations
+before runtime types are considered.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>use_writer</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to persist new cells through the batched writer.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ray</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to expose Ray submissions instead of a synchronous factory.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="collections.abc.Callable">Callable</span>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>, <a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a>] | <a class="autorefs autorefs-internal" title="maskyard.models.pdk.RemotePCell" href="./#maskyard.models.pdk.RemotePCell">RemotePCell</a>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>] | <span title="collections.abc.Callable">Callable</span>[[<span title="collections.abc.Callable">Callable</span>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>, <a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a>]], <span title="collections.abc.Callable">Callable</span>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>, <a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a>] | <a class="autorefs autorefs-internal" title="maskyard.models.pdk.RemotePCell" href="./#maskyard.models.pdk.RemotePCell">RemotePCell</a>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The wrapped factory, a remote factory handle, or a decorator for either form</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="collections.abc.Callable">Callable</span>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>, <a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a>] | <a class="autorefs autorefs-internal" title="maskyard.models.pdk.RemotePCell" href="./#maskyard.models.pdk.RemotePCell">RemotePCell</a>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>] | <span title="collections.abc.Callable">Callable</span>[[<span title="collections.abc.Callable">Callable</span>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>, <a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a>]], <span title="collections.abc.Callable">Callable</span>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>, <a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a>] | <a class="autorefs autorefs-internal" title="maskyard.models.pdk.RemotePCell" href="./#maskyard.models.pdk.RemotePCell">RemotePCell</a>[<span title="maskyard.models.pdk.Pdk.pcell[**P]">P</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>when function is omitted.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the PDK is unnamed or Ray and the batched writer are both
+requested.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="NotImplementedError">NotImplementedError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the database dialect does not support registration.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -1836,6 +2968,85 @@
 
 
     <div class="doc doc-contents first">
+
+        <p>Get a named PDK, registering it first if it does not exist.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unique PDK name in the current database.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Pdk (maskyard.models.pdk.Pdk)" href="./#maskyard.Pdk">Pdk</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The registered PDK loaded in the current session.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="NotImplementedError">NotImplementedError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the database dialect does not support registration.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -2041,7 +3252,7 @@
 
 
 
-        <p>Cache Ray object references for equivalent PCell submissions.</p>
+        <p>Submit a typed PCell factory and cache equivalent Ray references.</p>
 
 
 
@@ -2075,7 +3286,101 @@
 
     <div class="doc doc-contents ">
 
-        <p>Return an existing ObjectRef or submit one persistent PCell task.</p>
+        <p>Reuse a matching Ray reference or submit the factory to a worker.</p>
+<p>A failed cached task is discarded so a subsequent call can retry it.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>*args</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.models.pdk.RemotePCell[**PCellParams]">PCellParams</span>.<span title="maskyard.models.pdk.RemotePCell[**PCellParams].args">args</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Positional arguments to bind to the cell factory.</p>
+              </div>
+            </td>
+            <td>
+                  <code>()</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+                  <code><span title="maskyard.models.pdk.RemotePCell[**PCellParams]">PCellParams</span>.<span title="maskyard.models.pdk.RemotePCell[**PCellParams].kwargs">kwargs</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Keyword arguments to bind to the cell factory.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ray.ObjectRef">ObjectRef</span>[<span title="int">int</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A Ray reference to the persisted cell ID.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="TypeError">TypeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the arguments do not match the factory signature.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -2093,7 +3398,84 @@
 
     <div class="doc doc-contents ">
 
-        <p>Resolve a remote result and load its cell in the caller's session.</p>
+        <p>Resolve a Ray result in the caller's database session.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>ref</code>
+            </td>
+            <td>
+                  <code><span title="ray.ObjectRef">ObjectRef</span>[<span title="int">int</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Reference to the cell ID returned by a remote submission.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The persisted cell loaded in the current session.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="LookupError">LookupError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the task's cell is missing from the database.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -2119,7 +3501,63 @@
 
     <div class="doc doc-contents first">
 
-        <p>Initialize the cache and purge it if its schema version is outdated.</p>
+        <p>Initialize the layout cache for the requested database unit.</p>
+<p>Migrate a compatible older schema and rebuild the cache if its schema or DBU is
+incompatible.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>dbu</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Size of one database unit in micrometers.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="maskyard.engine.DEFAULT_DBU">DEFAULT_DBU</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the requested DBU is nonpositive.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -2136,6 +3574,62 @@
 
 
     <div class="doc doc-contents first">
+
+        <p>Temporarily make a new session current for this thread.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>expire_on_commit</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to expire ORM objects after each commit.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Yields:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="collections.abc.Generator">Generator</span>[<span title="sqlmodel.Session">Session</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The new session, which closes when the context exits.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -2163,7 +3657,61 @@
 
     <div class="doc doc-contents first">
 
-        <p>Convert Shapes or values in dbu to DShapes or floats in um.</p>
+        <p>Convert coordinates or a length from micrometers to database units.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>other</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | <span title="maskyard.kdb.DPoint">DPoint</span> | <span title="maskyard.kdb.DVector">DVector</span> | <span title="maskyard.kdb.DBox">DBox</span> | <span title="maskyard.kdb.DPolygon">DPolygon</span> | <span title="maskyard.kdb.DPath">DPath</span> | <span title="maskyard.kdb.DText">DText</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A length, KLayout object with floating-point coordinates, or None.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="int">int</span> | <span title="maskyard.kdb.Point">Point</span> | <span title="maskyard.kdb.Vector">Vector</span> | <span title="maskyard.kdb.Box">Box</span> | <span title="maskyard.kdb.Polygon">Polygon</span> | <span title="maskyard.kdb.Path">Path</span> | <span title="maskyard.kdb.Text">Text</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The integer-grid value or KLayout object, or None.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -2191,7 +3739,61 @@
 
     <div class="doc doc-contents first">
 
-        <p>Convert Shapes or values in dbu to DShapes or floats in um.</p>
+        <p>Convert coordinates or a length from database units to micrometers.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>other</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span> | <span title="maskyard.kdb.Point">Point</span> | <span title="maskyard.kdb.Vector">Vector</span> | <span title="maskyard.kdb.Box">Box</span> | <span title="maskyard.kdb.Polygon">Polygon</span> | <span title="maskyard.kdb.Path">Path</span> | <span title="maskyard.kdb.Text">Text</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An integer length, KLayout object with integer coordinates, or None.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="float">float</span> | <span title="maskyard.kdb.DPoint">DPoint</span> | <span title="maskyard.kdb.DVector">DVector</span> | <span title="maskyard.kdb.DBox">DBox</span> | <span title="maskyard.kdb.DPolygon">DPolygon</span> | <span title="maskyard.kdb.DPath">DPath</span> | <span title="maskyard.kdb.DText">DText</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The scaled floating-point value or KLayout object, or None.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>
@@ -2209,7 +3811,77 @@
 
     <div class="doc doc-contents first">
 
-        <p>Snapshot a new cell, then queue it for the dedicated writer.</p>
+        <p>Queue a new cell for the process-wide writer.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>cell</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="maskyard.Cell (maskyard.models.cell.Cell)" href="./#maskyard.Cell">Cell</a> | <span title="maskyard.writer.CellWrite">CellWrite</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unsaved cell to snapshot, or an existing snapshot to queue directly.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>flush</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to end the writer's batch at this request.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="concurrent.futures.Future">Future</span>[<span title="int">int</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A future that resolves to the committed cell ID.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
     </div>

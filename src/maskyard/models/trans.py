@@ -21,6 +21,18 @@ class PortTrans(TypeDecorator[kdb.Trans | kdb.DCplxTrans]):
     impl = LargeBinary
     cache_ok = True
 
+    def compare_values(self, x: object, y: object) -> bool:
+        """Compare port transforms for SQLAlchemy change tracking.
+
+        Args:
+            x: Current value.
+            y: Previously loaded value.
+
+        Returns:
+            Whether the values have the same representation and compare equal.
+        """
+        return type(x) is type(y) and x == y
+
     def process_bind_param(
         self, value: kdb.Trans | kdb.DCplxTrans | None, dialect: Dialect
     ) -> bytes | None:

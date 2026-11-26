@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Self, overload
 from sqlalchemy import LargeBinary, UniqueConstraint, or_
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import aliased, object_session, relationship
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import JSON, Field, Relationship, SQLModel, col, select
 from sqlmodel.main import SQLModelConfig
 
@@ -19,6 +20,7 @@ from .geometry import Geometry
 from .instance import Instance
 from .layer import Layer
 from .port import CellPort, Port
+from .transformable import Transformable
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -33,7 +35,7 @@ automatic_cell_name: ContextVar[str | None] = ContextVar[str | None](
 )
 
 
-class Cell(SQLModel, table=True):
+class Cell(SQLModel, Transformable, table=True):
     __table_args__ = (
         UniqueConstraint(
             "pcell_factory_id", "hashkey", name="uq_cell_pcell_factory_hashkey"
@@ -84,6 +86,29 @@ class Cell(SQLModel, table=True):
             li = geometry.layout.layer(layer.layer, layer.datatype)
             own_box = geometry.kdb_cell.bbox(li)
         return sum((inst.bbox(layer) for inst in self.instances), own_box)
+
+    def transform(self, trans: kdb.Trans | kdb.DCplxTrans) -> Self:
+        """Transform the cell's local shapes, ports, and instance placements.
+
+        Referenced cell definitions retain their local geometry.
+
+        Args:
+            trans: An integer DBU transform or a complex transform in micrometers.
+
+        Returns:
+            The transformed cell.
+        """
+        geometry = self.geometry
+        ports = self.ports
+        instances = self.instances
+        if geometry is not None:
+            geometry.kdb_cell.transform(trans)
+            flag_modified(geometry, "layout")
+        for port in ports:
+            port.transform(trans)
+        for instance in instances:
+            instance.transform(trans)
+        return self
 
     def get_port(self, name: str) -> CellPort:
 

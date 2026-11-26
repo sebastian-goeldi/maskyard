@@ -11,6 +11,7 @@ from .. import kdb
 from ..config import settings, to_dbu, to_um
 from .cross_section import SymmetricCrossSection  # noqa: TC001
 from .trans import PortTrans
+from .transformable import Transformable
 
 if TYPE_CHECKING:
     from ..typing import Angle
@@ -84,19 +85,6 @@ class Port(ABC):
         cell_port.transformation = trans * transformation * post_trans
 
         return cell_port
-
-    @property
-    def mirror(self) -> bool:
-        """Returns `True`/`False` depending on the mirror flag on the transformation."""
-        return self.trans.is_mirror()
-
-    @mirror.setter
-    def mirror(self, value: bool) -> None:
-        """Setter for mirror flag on trans."""
-        if self.trans:
-            self.trans.mirror = value
-        elif self.dcplx_trans:
-            self.dcplx_trans.mirror = value
 
     @abstractmethod
     def dup(self) -> CellPort:
@@ -225,7 +213,7 @@ class Port(ABC):
     # def __repr__(self) -> str: ...
 
 
-class CellPort(SQLModel, Port, table=True):
+class CellPort(SQLModel, Port, Transformable, table=True):
     model_config = SQLModelConfig(arbitrary_types_allowed=True)
 
     id: int | None = Field(default=None, primary_key=True)
@@ -261,6 +249,22 @@ class CellPort(SQLModel, Port, table=True):
     @dcplx_trans.setter
     def dcplx_trans(self, value: kdb.DCplxTrans) -> None:
         self.transformation = value.dup()
+
+    @property
+    def mirrored(self) -> bool:
+        """Return whether the port transformation includes a reflection."""
+        return self.transformation.is_mirror()
+
+    @mirrored.setter
+    def mirrored(self, value: bool) -> None:
+        """Set the mirror flag on the port transformation.
+
+        Args:
+            value: Whether the transformation includes a reflection.
+        """
+        trans = self.transformation.dup()
+        trans.mirror = value
+        self.transformation = trans
 
     @Port.angle.setter
     def angle(self, value: int) -> None:
@@ -315,7 +319,15 @@ class CellPort(SQLModel, Port, table=True):
         trans: kdb.Trans | kdb.DCplxTrans = kdb.Trans.R0,
         post_trans: kdb.Trans | kdb.DCplxTrans = kdb.Trans.R0,
     ) -> Self:
-        """Get a transformed copy of the BasePort."""
+        """Transform the port in place.
+
+        Args:
+            trans: Transform applied in cell coordinates.
+            post_trans: Transform applied in the port's local coordinates.
+
+        Returns:
+            The transformed port.
+        """
 
         if (
             isinstance(self.transformation, kdb.Trans)
@@ -328,11 +340,7 @@ class CellPort(SQLModel, Port, table=True):
             trans = kdb.DCplxTrans(trans.to_dtype(settings.dbu))
         if isinstance(post_trans, kdb.Trans):
             post_trans = kdb.DCplxTrans(post_trans.to_dtype(settings.dbu))
-        dcplx_trans = self.dcplx_trans or kdb.DCplxTrans(
-            t=self.trans.to_dtype(settings.dbu)
-        )
-
-        self.dcplx_trans = trans * dcplx_trans * post_trans
+        self.dcplx_trans = trans * self.dcplx_trans * post_trans
         return self
 
     def dup(self) -> CellPort:
@@ -363,25 +371,38 @@ class InstancePort(Port):
         return self.cell_port.cross_section
 
     @property
+    def mirror(self) -> bool:
+        """Return whether the derived port transformation includes a reflection."""
+        return self.trans.is_mirror()
+
+    @mirror.setter
+    def mirror(self, value: bool) -> None:
+        """Set the mirror flag on the derived transform.
+
+        Args:
+            value: Whether the transformation includes a reflection.
+        """
+        if self.trans:
+            self.trans.mirror = value
+        elif self.dcplx_trans:
+            self.dcplx_trans.mirror = value
+
+    @property
     def transformation(self) -> kdb.Trans | kdb.DCplxTrans:
+        """Return the derived port transform in parent-cell coordinates."""
+        offset = self.instance.a * max(0, self.ia) + self.instance.b * max(0, self.ib)
         if (
             isinstance(self.cell_port.transformation, kdb.Trans)
             and not self.instance.cplx_trans.is_complex()
         ):
-            trans = self.instance.trans
-            if self.ia > 0:
-                trans *= kdb.Trans(self.instance.a * self.ia)
-            if self.ib > 0:
-                trans *= kdb.Trans(self.instance.b * self.ib)
-            return self.instance.trans * kdb.Trans() * self.cell_port.transformation
-        dtrans = self.instance.dcplx_trans
-        if self.ia > 0:
-            a = self.instance.a.to_dtype(settings.dbu)
-            dtrans *= kdb.DCplxTrans(a * self.ia)
-        if self.ib > 0:
-            b = self.instance.b.to_dtype(settings.dbu)
-            dtrans *= kdb.DCplxTrans(b * self.ib)
-        return dtrans * self.cell_port.dcplx_trans
+            return (
+                kdb.Trans(offset) * self.instance.trans * self.cell_port.transformation
+            )
+        return (
+            kdb.DCplxTrans(offset.to_dtype(settings.dbu))
+            * self.instance.dcplx_trans
+            * self.cell_port.dcplx_trans
+        )
 
     @property
     def trans(self) -> kdb.Trans:

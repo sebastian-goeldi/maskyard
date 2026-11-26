@@ -113,6 +113,7 @@ def test_outdated_cache_warns_and_is_purged(
     test_engine.dispose()
 
     def open_cache() -> None:
+        """Open the stale cache and check that initialization cleared its cell rows."""
         with database.session_context() as session:
             assert session.exec(select(oas.Cell)).all() == []
 

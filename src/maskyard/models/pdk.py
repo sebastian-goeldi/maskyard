@@ -33,6 +33,7 @@ from ..serialization import (
     _TO_HASHABLE,
     get_cell_name,
     kcl_cross_section_serializer,
+    serialize_setting,
     to_hashable,
 )
 from ..writer import submit_cell
@@ -419,7 +420,10 @@ class Pdk(SQLModel, table=True):
                         cell.hashkey = key_bytes
                         cell_info = cell.info
                         cell_settings = cell.settings
-                        cell_settings.data = {**params}
+                        cell_settings.data = {
+                            name: serialize_setting(value)
+                            for name, value in params.items()
+                        }
                         if use_writer:
                             cell_id = submit_cell(cell, flush=True).result()
                             saved = session.get(Cell, cell_id)

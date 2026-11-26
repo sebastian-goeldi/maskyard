@@ -184,6 +184,33 @@ def test_pcell_preserves_positional_only_and_original_list(
     assert type(seen[0]) is list
 
 
+@pytest.mark.parametrize("use_writer", [False, True])
+def test_pcell_persists_json_settings(test_engine: Engine, use_writer: bool) -> None:
+    pdk = oas.get_or_create_pdk("settings")
+    layer = oas.kdb.LayerInfo(1, 0)
+
+    @pdk.pcell(use_writer=use_writer, drop_params=("layer",))
+    def component(widths: dict[str, list[float]], layer: oas.kdb.LayerInfo) -> oas.Cell:
+        cell = pdk.create_cell(persist=not use_writer)
+        cell.shapes(layer).insert(oas.kdb.Box(0, 0, round(widths["core"][0]), 1))
+        cell.info["labels"] = {"core": ["strip", None]}
+        return cell
+
+    cell_id = component({"core": [3.0, 4.5]}, layer).id
+    assert cell_id is not None
+    with Session(test_engine) as session:
+        saved = session.get(oas.Cell, cell_id)
+        assert saved is not None
+        assert saved.info["labels"] == {"core": ["strip", None]}
+        widths = saved.settings["widths"]
+        assert widths == {"core": [3.0, 4.5]}
+        assert isinstance(widths, dict)
+        assert isinstance(widths["core"], list)
+        assert isinstance(widths["core"][0], float)
+        assert saved.settings["layer"] == f"!#LayerInfo {layer}"
+        assert saved.bbox().width() == 3
+
+
 def test_nested_pcell_restores_outer_automatic_name(test_engine: Engine) -> None:
     database.create_db_and_tables()
     pdk = oas.Pdk(name="test")

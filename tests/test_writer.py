@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def writer_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Engine]:
+    """Install an isolated writer database and drain the writer during teardown."""
     shutdown_writer()
     engine = create_engine(f"sqlite:///{tmp_path / 'writer.db'}")
     monkeypatch.setattr(database, "engine", engine)

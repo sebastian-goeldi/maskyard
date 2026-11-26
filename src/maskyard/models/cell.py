@@ -15,6 +15,7 @@ from .. import kdb
 from ..config import settings
 from ..engine import get_context_session, get_session
 from ..serialization import CellNameError
+from ..typing import JSONSerializable  # noqa: TC001 - SQLModel resolves field types.
 from .cross_section import SymmetricCrossSection
 from .geometry import Geometry
 from .instance import Instance
@@ -432,7 +433,7 @@ class Cell(SQLModel, Transformable, table=True):
         self,
         name: str,
         cross_section: str | SymmetricCrossSection,
-        info: dict[str, object] | None = None,
+        info: dict[str, JSONSerializable] | None = None,
         trans: kdb.Trans | kdb.DCplxTrans = kdb.Trans.R0,
     ) -> CellPort:
         """Create a port on this cell and commit it.
@@ -630,13 +631,13 @@ class Cell(SQLModel, Transformable, table=True):
 class CellInfo(SQLModel, table=True):
     id: int | None = Field(foreign_key="cell.id", primary_key=True)
     cell: Cell = Relationship(back_populates="info")
-    data: dict[str, object] = Field(default_factory=dict, sa_type=JSON)
+    data: dict[str, JSONSerializable] = Field(default_factory=dict, sa_type=JSON)
 
-    def __getitem__(self, name: str) -> object:
+    def __getitem__(self, name: str) -> JSONSerializable:
         """Return the metadata value stored under a key."""
         return self.data[name]
 
-    def __setitem__(self, name: str, value: object) -> None:
+    def __setitem__(self, name: str, value: JSONSerializable) -> None:
         """Store a metadata value under a key."""
         self.data[name] = value
 
@@ -644,13 +645,13 @@ class CellInfo(SQLModel, table=True):
 class CellSettings(SQLModel, table=True):
     id: int | None = Field(foreign_key="cell.id", primary_key=True)
     cell: Cell = Relationship(back_populates="settings")
-    data: dict[str, object] = Field(default_factory=dict, sa_type=JSON)
+    data: dict[str, JSONSerializable] = Field(default_factory=dict, sa_type=JSON)
 
-    def __getitem__(self, name: str) -> object:
+    def __getitem__(self, name: str) -> JSONSerializable:
         """Return the factory parameter stored under a key."""
         return self.data[name]
 
-    def __setitem__(self, name: str, value: object) -> None:
+    def __setitem__(self, name: str, value: JSONSerializable) -> None:
         """Store a factory parameter under a key."""
         self.data[name] = value
 

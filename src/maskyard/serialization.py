@@ -3,10 +3,10 @@ from __future__ import annotations
 import functools
 import inspect
 from collections import UserDict, UserList
-from collections.abc import Callable, Hashable, Mapping
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from hashlib import sha3_512
 from types import FunctionType, UnionType
-from typing import TYPE_CHECKING, TypeGuard, cast, overload
+from typing import TYPE_CHECKING, TypeGuard, overload
 
 import klayout.db as kdb
 import numpy as np
@@ -353,28 +353,27 @@ def check_metadata_type(value: object) -> MetaData:
     raise ValueError(msg)
 
 
-def serialize_setting(setting: MetaData) -> JSONSerializable:
-    """Encode metadata for JSON storage.
+def serialize_setting(setting: object) -> JSONSerializable:
+    """Encode a raw factory argument for JSON storage.
 
     Args:
-        setting: Metadata value, including nested containers and KLayout objects.
+        setting: Argument value, which may contain nested containers or KLayout objects.
 
     Returns:
-        JSON-compatible data with KLayout objects represented by tagged strings.
+        JSON-compatible data with KLayout objects represented by tagged strings and
+        other unsupported values represented by name fragments.
     """
-    if setting is None:
-        return None
-    if isinstance(setting, dict):
-        return {
-            str(name): serialize_setting(_setting) for name, _setting in setting.items()
-        }
-    if isinstance(setting, list):
-        return [serialize_setting(s) for s in setting]
-    if isinstance(setting, tuple):
-        return tuple(serialize_setting(s) for s in setting)
+    if setting is None or isinstance(setting, bool | int | float | str):
+        return setting
     if serializible_shape_guard(setting):
         return f"!#{setting.__class__.__name__} {setting!s}"
-    return cast("JSONSerializable", setting)
+    if isinstance(setting, Mapping):
+        return {str(name): serialize_setting(value) for name, value in setting.items()}
+    if isinstance(setting, tuple):
+        return tuple(serialize_setting(value) for value in setting)
+    if isinstance(setting, Sequence):
+        return [serialize_setting(value) for value in setting]
+    return clean_value(setting)
 
 
 def deserialize_setting(setting: JSONSerializable) -> MetaData:

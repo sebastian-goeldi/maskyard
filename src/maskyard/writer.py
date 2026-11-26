@@ -26,6 +26,8 @@ from .models.vector import Vector
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
+    from .typing import JSONSerializable
+
 
 @dataclass(frozen=True)
 class InstanceWrite:
@@ -56,8 +58,8 @@ class CellWrite:
 
     name: str
     geometry: bytes
-    info: dict[str, object] = field(default_factory=dict)
-    settings: dict[str, object] = field(default_factory=dict)
+    info: dict[str, JSONSerializable] = field(default_factory=dict)
+    settings: dict[str, JSONSerializable] = field(default_factory=dict)
     instances: tuple[InstanceWrite, ...] = ()
     ports: tuple[PortWrite, ...] = ()
     pcell_factory_id: int | None = None

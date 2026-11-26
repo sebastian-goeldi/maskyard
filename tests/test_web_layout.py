@@ -38,6 +38,8 @@ def test_manifest_uses_array_bounds_and_exposes_child_geometry(
         session.add_all((root, child))
         session.commit()
         root_id, child_id = root.id, child.id
+        assert root_id is not None
+        assert child_id is not None
         manifest = cell_layout_manifest(root_id)
         geometry = cell_layout_geometry(child_id)
 

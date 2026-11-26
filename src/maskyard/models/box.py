@@ -17,6 +17,7 @@ class Box(TypeDecorator[kdb.Box]):
     def process_bind_param(
         self, value: kdb.Box | None, dialect: Dialect
     ) -> bytes | None:
+        """Encode a KLayout box for storage in a binary column."""
         if value is None:
             return None
         return value.to_bytes()
@@ -24,6 +25,7 @@ class Box(TypeDecorator[kdb.Box]):
     def process_result_value(
         self, value: bytes | None, dialect: Dialect
     ) -> kdb.Box | None:
+        """Decode a KLayout box from its stored bytes, preserving NULL."""
         if value is None:
             return None
         return kdb.Box.from_bytes(value)

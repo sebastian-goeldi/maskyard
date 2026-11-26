@@ -16,6 +16,7 @@ def test_ray_pcell_caches_refs_and_persists_cells(
     test_engine: Engine, tmp_path: Path
 ) -> None:
     def leaf(width: int, counter_path: str) -> mask.Cell:
+        """Record a worker invocation and create geometry for the requested width."""
         with Path(counter_path).open("a") as counter:
             counter.write(f"{width}\n")
         cell = mask.get_or_create_pdk("ray_test").create_cell(f"leaf_{width}")
@@ -57,6 +58,7 @@ def test_failed_ray_pcell_can_be_resubmitted(
     test_engine: Engine, tmp_path: Path
 ) -> None:
     def flaky(flag_path: str) -> mask.Cell:
+        """Fail the first invocation and create a cell when retried."""
         flag = Path(flag_path)
         if not flag.exists():
             flag.write_text("failed")

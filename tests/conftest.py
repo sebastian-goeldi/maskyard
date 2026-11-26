@@ -12,7 +12,15 @@ from sqlmodel import create_engine
 
 @pytest.fixture
 def test_db_path(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
-    """Give each test a SQLite file in pytest's named temporary directory."""
+    """Allocate a test database path and record it for failure reports.
+
+    Args:
+        tmp_path: Temporary directory assigned by pytest.
+        request: Fixture request for the active test.
+
+    Returns:
+        The SQLite database path for the test.
+    """
     db_path = tmp_path / "test.db"
     request.node.user_properties.append(("test_db_path", str(db_path)))
     return db_path
@@ -20,7 +28,14 @@ def test_db_path(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
 
 @pytest.fixture
 def test_engine(test_db_path: Path) -> Iterator[Engine]:
-    """Open and dispose an engine for one test."""
+    """Install a temporary database engine for one test.
+
+    Args:
+        test_db_path: Path to the test's SQLite database file.
+
+    Yields:
+        The isolated engine, which is disposed before restoring the original engine.
+    """
     import maskyard.engine as database
 
     engine = create_engine(f"sqlite:///{test_db_path}")

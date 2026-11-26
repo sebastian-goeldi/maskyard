@@ -11,7 +11,15 @@ from operator import attrgetter
 from pathlib import Path
 from threading import RLock
 from types import FunctionType, UnionType
-from typing import TYPE_CHECKING, Any, Literal, TypeAliasType, get_type_hints, overload
+from typing import (
+    TYPE_CHECKING,
+    Literal,
+    TypeAliasType,
+    TypedDict,
+    Unpack,
+    get_type_hints,
+    overload,
+)
 
 from cachetools.keys import hashkey
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
@@ -25,6 +33,7 @@ from ..serialization import (
     _TO_HASHABLE,
     get_cell_name,
     kcl_cross_section_serializer,
+    serialize_setting,
     to_hashable,
 )
 from ..writer import submit_cell
@@ -35,19 +44,31 @@ from .dependency import Dependency
 from .factory import PCellFactory
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable, Sequence
+    from collections.abc import Hashable, Mapping, Sequence
 
-type _SerializerMap = dict[type | UnionType | TypeAliasType, Callable[[Any], Any]]
+    from ray import ObjectRef
+
+# Serializer inputs vary with the registered runtime type or annotation.
+type _Serializer = Callable[..., object]
+type _TypeSerializers = Sequence[tuple[type | UnionType, _Serializer]]
+type _SerializerMap = Mapping[type | UnionType | TypeAliasType, _Serializer]
+
+
+class _PCellOptions(TypedDict, total=False):
+    drop_params: Sequence[str]
+    type_serializers: _TypeSerializers
+    type_hints_serializer: _SerializerMap | None
+    use_writer: bool
 
 
 def _run_remote_pcell(
     factory: Callable[..., Cell],
     pdk_name: str,
     database_url: str,
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    args: tuple[object, ...],
+    kwargs: Mapping[str, object],
     drop_params: tuple[str, ...],
-    type_serializers: tuple[tuple[type | UnionType, Callable[[Any], Any]], ...],
+    type_serializers: tuple[tuple[type | UnionType, _Serializer], ...],
     type_hints_serializer: _SerializerMap | None,
 ) -> int:
     """Run the ordinary persistent PCell path inside a Ray worker."""
@@ -72,20 +93,21 @@ def _run_remote_pcell(
     return cell.id
 
 
-class RemotePCell:
-    """Cache Ray object references for equivalent PCell submissions."""
+class RemotePCell[**PCellParams]:
+    """Submit a typed PCell factory and cache equivalent Ray references."""
 
     def __init__(
         self,
-        factory: Callable[..., Cell],
+        factory: Callable[PCellParams, Cell],
         pdk_name: str,
         database_url: str,
         signature: inspect.Signature,
         make_key: Callable[..., tuple[Hashable, ...]],
         drop_params: tuple[str, ...],
-        type_serializers: tuple[tuple[type | UnionType, Callable[[Any], Any]], ...],
+        type_serializers: tuple[tuple[type | UnionType, _Serializer], ...],
         type_hints_serializer: _SerializerMap | None,
     ) -> None:
+        """Store factory and database configuration for remote submissions."""
         self._factory = factory
         self._pdk_name = pdk_name
         self._database_url = database_url
@@ -94,13 +116,28 @@ class RemotePCell:
         self._drop_params = drop_params
         self._type_serializers = type_serializers
         self._type_hints_serializer = type_hints_serializer
-        self._cache: dict[tuple[Hashable, ...], Any] = {}
+        self._cache: dict[tuple[Hashable, ...], ObjectRef[int]] = {}
         self._lock = RLock()
         self.__name__ = get_function_name(factory)
         self.__signature__ = signature
 
-    def remote(self, *args: Any, **kwargs: Any) -> Any:
-        """Return an existing ObjectRef or submit one persistent PCell task."""
+    def remote(
+        self, *args: PCellParams.args, **kwargs: PCellParams.kwargs
+    ) -> ObjectRef[int]:
+        """Reuse a matching Ray reference or submit the factory to a worker.
+
+        A failed cached task is discarded so a subsequent call can retry it.
+
+        Args:
+            *args: Positional arguments to bind to the cell factory.
+            **kwargs: Keyword arguments to bind to the cell factory.
+
+        Returns:
+            A Ray reference to the persisted cell ID.
+
+        Raises:
+            TypeError: If the arguments do not match the factory signature.
+        """
         import ray
 
         bound = self._signature.bind(*args, **kwargs)
@@ -135,8 +172,18 @@ class RemotePCell:
             self._cache[key] = ref
             return ref
 
-    def get_cell(self, ref: Any) -> Cell:
-        """Resolve a remote result and load its cell in the caller's session."""
+    def get_cell(self, ref: ObjectRef[int]) -> Cell:
+        """Resolve a Ray result in the caller's database session.
+
+        Args:
+            ref: Reference to the cell ID returned by a remote submission.
+
+        Returns:
+            The persisted cell loaded in the current session.
+
+        Raises:
+            LookupError: If the task's cell is missing from the database.
+        """
         import ray
 
         cell_id: int = ray.get(ref)
@@ -167,12 +214,17 @@ class Pdk(SQLModel, table=True):
     @overload
     def pcell[**P](
         self, function: Callable[P, Cell], /, *, ray: Literal[True]
-    ) -> RemotePCell: ...
+    ) -> RemotePCell[P]: ...
 
     @overload
     def pcell[**P](
-        self, function: None = None, /, *, ray: Literal[True], **kwargs: Any
-    ) -> Callable[[Callable[P, Cell]], RemotePCell]: ...
+        self,
+        function: None = None,
+        /,
+        *,
+        ray: Literal[True],
+        **kwargs: Unpack[_PCellOptions],
+    ) -> Callable[[Callable[P, Cell]], RemotePCell[P]]: ...
 
     @overload
     def pcell[**P](
@@ -181,13 +233,10 @@ class Pdk(SQLModel, table=True):
         /,
         *,
         drop_params: Sequence[str] = ("self", "cls"),
-        type_serializers: Sequence[tuple[type | UnionType, Callable[[Any], Any]]] = (
+        type_serializers: _TypeSerializers = (
             (SymmetricCrossSection, attrgetter("id")),
         ),
-        type_hints_serializer: dict[
-            type | UnionType | TypeAliasType, Callable[[Any], Any]
-        ]
-        | None = None,
+        type_hints_serializer: _SerializerMap | None = None,
         use_writer: bool = False,
         ray: Literal[False] = False,
     ) -> Callable[[Callable[P, Cell]], Callable[P, Cell]]: ...
@@ -198,21 +247,45 @@ class Pdk(SQLModel, table=True):
         /,
         *,
         drop_params: Sequence[str] = ("self", "cls"),
-        type_serializers: Sequence[tuple[type | UnionType, Callable[[Any], Any]]] = (
+        type_serializers: _TypeSerializers = (
             (SymmetricCrossSection, attrgetter("id")),
         ),
-        type_hints_serializer: dict[
-            type | UnionType | TypeAliasType, Callable[[Any], Any]
-        ]
-        | None = None,
+        type_hints_serializer: _SerializerMap | None = None,
         use_writer: bool = False,
         ray: bool = False,
-    ) -> Any:
-        """Cache and persist cells built by decorated factories."""
+    ) -> (
+        Callable[P, Cell]
+        | RemotePCell[P]
+        | Callable[[Callable[P, Cell]], Callable[P, Cell] | RemotePCell[P]]
+    ):
+        """Register a parametrized cell factory and reuse cells for matching inputs.
 
-        def decorate[**Q](
-            factory: Callable[Q, Cell],
-        ) -> Callable[Q, Cell] | RemotePCell:
+        Factory source changes invalidate the corresponding dependency registration.
+
+        Args:
+            function: Factory to decorate directly. Omit it to configure a decorator.
+            drop_params: Parameter names excluded from cache keys.
+            type_serializers: Ordered (type, serializer) pairs for matching argument
+                values.
+            type_hints_serializer: Serializers selected by the factory's annotations
+                before runtime types are considered.
+            use_writer: Whether to persist new cells through the batched writer.
+            ray: Whether to expose Ray submissions instead of a synchronous factory.
+
+        Returns:
+            The wrapped factory, a remote factory handle, or a decorator for either form
+            when function is omitted.
+
+        Raises:
+            ValueError: If the PDK is unnamed or Ray and the batched writer are both
+                requested.
+            NotImplementedError: If the database dialect does not support registration.
+        """
+
+        def decorate(
+            factory: Callable[P, Cell],
+        ) -> Callable[P, Cell] | RemotePCell[P]:
+            """Register a factory and build the synchronous wrapper or remote handle."""
             sig = inspect.signature(factory)
             file = _get_path(factory)
             session = get_session()
@@ -272,9 +345,7 @@ class Pdk(SQLModel, table=True):
                 hints = get_type_hints(factory)
             except (NameError, TypeError):
                 hints = {}
-            serializers: (
-                dict[type | UnionType | TypeAliasType, Callable[[Any], Any]] | None
-            ) = type_hints_serializer
+            serializers: _SerializerMap | None = type_hints_serializer
             if serializers is None:
                 serializers = {SymmetricCrossSection: kcl_cross_section_serializer()}
             make_key = get_keys_function(
@@ -302,7 +373,8 @@ class Pdk(SQLModel, table=True):
             lock = RLock()
 
             @wraps(factory)
-            def wrapper_pcell(*args: Q.args, **kwargs: Q.kwargs) -> Cell:
+            def wrapper_pcell(*args: P.args, **kwargs: P.kwargs) -> Cell:
+                """Reuse a matching cell or build and commit a new one."""
                 bound = sig.bind(*args, **kwargs)
                 bound.apply_defaults()
                 params = dict(bound.arguments)
@@ -350,7 +422,10 @@ class Pdk(SQLModel, table=True):
                         cell.hashkey = key_bytes
                         cell_info = cell.info
                         cell_settings = cell.settings
-                        cell_settings.data = {**params}
+                        cell_settings.data = {
+                            name: serialize_setting(value)
+                            for name, value in params.items()
+                        }
                         if use_writer:
                             cell_id = submit_cell(cell, flush=True).result()
                             saved = session.get(Cell, cell_id)
@@ -375,13 +450,36 @@ class Pdk(SQLModel, table=True):
         return decorate(function) if function is not None else decorate
 
     def create_cell(self, name: str | None = None, *, persist: bool = True) -> Cell:
+        """Create an empty cell associated with this PDK.
+
+        Args:
+            name: Explicit name, or None to use the active factory's automatic name.
+            persist: Whether to add the cell to the current session for a later commit.
+
+        Returns:
+            The newly initialized cell.
+
+        Raises:
+            ValueError: If the PDK has no name.
+        """
         if self.name is None:
             raise ValueError("A PDK needs a name to create cells")
         pdk = get_or_create_pdk(self.name) if self.id is None else self
         return _create_cell(name=name, pdk=pdk, persist=persist)
 
 
-def get_function_name(f: Callable[..., Any]) -> str:
+def get_function_name(f: Callable[..., object]) -> str:
+    """Resolve a callable name, following wrapped functions such as partials.
+
+    Args:
+        f: Callable to inspect.
+
+    Returns:
+        The first available callable name.
+
+    Raises:
+        ValueError: If neither the callable nor its wrapped function has a name.
+    """
     if hasattr(f, "__name__"):
         return str(f.__name__)
     if hasattr(f, "func") and callable(f.func):
@@ -392,16 +490,29 @@ def get_function_name(f: Callable[..., Any]) -> str:
 def get_keys_function(
     hints: dict[str, type],
     drop_args: Sequence[str],
-    serialize_types: Sequence[tuple[type | UnionType, Callable[[Any], Any]]],
-    serialize_hints: dict[type | UnionType | TypeAliasType, Callable[[Any], Any]],
+    serialize_types: _TypeSerializers,
+    serialize_hints: _SerializerMap,
 ) -> Callable[..., tuple[Hashable, ...]]:
+    """Build a function that normalizes arguments into a PCell cache key.
+
+    Args:
+        hints: Factory type hints keyed by parameter name.
+        drop_args: Names to remove from keyword arguments before hashing.
+        serialize_types: Ordered serializers matched against runtime value types.
+        serialize_hints: Serializers matched against declared types with priority over
+            runtime types.
+
+    Returns:
+        A callable that produces a key from the normalized arguments.
+    """
     types_ = tuple(st[0] for st in serialize_types)
 
-    def _keys_function(*args: Any, **kwargs: Any) -> tuple[Hashable, ...]:
+    def _keys_function(*args: object, **kwargs: object) -> tuple[Hashable, ...]:
+        """Apply the configured serializers and build a cachetools key."""
         for arg in drop_args:
             kwargs.pop(arg, None)
 
-        updates: dict[str, Any] = {}
+        updates: dict[str, object] = {}
         for key, value in kwargs.items():
             if key in hints and hints[key] in serialize_hints:
                 updates[key] = serialize_hints[hints[key]](value)
@@ -416,7 +527,8 @@ def get_keys_function(
     return _keys_function
 
 
-def _get_path(f: Callable[..., Any]) -> Path:
+def _get_path(f: Callable[..., object]) -> Path:
+    """Resolve a callable's source path, unwrapping partials as needed."""
     if isinstance(f, FunctionType):
         return Path(f.__code__.co_filename).expanduser().resolve()
     if isinstance(f, functools.partial):
@@ -428,6 +540,17 @@ def _get_path(f: Callable[..., Any]) -> Path:
 
 
 def get_or_create_pdk(name: str) -> Pdk:
+    """Get a named PDK, registering it first if it does not exist.
+
+    Args:
+        name: Unique PDK name in the current database.
+
+    Returns:
+        The registered PDK loaded in the current session.
+
+    Raises:
+        NotImplementedError: If the database dialect does not support registration.
+    """
     session = get_session()
     dialect = session.get_bind().dialect.name
     if dialect == "sqlite":

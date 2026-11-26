@@ -33,6 +33,11 @@ class Settings(BaseSettings):
 
     @cached_property
     def dbu(self) -> float:
+        """Return the database unit in micrometers from the configuration row.
+
+        Raises:
+            RuntimeError: If the configuration row has no DBU value.
+        """
         from .engine import _config_table, engine
 
         with engine.connect() as connection:
@@ -45,6 +50,7 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
+    """Return the cached Maskyard settings."""
     return Settings.settings_cached()
 
 
@@ -102,7 +108,14 @@ def to_um(
     | kdb.DText
     | None
 ):
-    """Convert Shapes or values in dbu to DShapes or floats in um."""
+    """Convert coordinates or a length from database units to micrometers.
+
+    Args:
+        other: An integer length, KLayout object with integer coordinates, or None.
+
+    Returns:
+        The scaled floating-point value or KLayout object, or None.
+    """
     if other is None:
         return None
     return kdb.CplxTrans(settings.dbu) * other
@@ -148,7 +161,14 @@ def to_dbu(
     | kdb.DText
     | None,
 ) -> int | kdb.Point | kdb.Vector | kdb.Box | kdb.Polygon | kdb.Path | kdb.Text | None:
-    """Convert Shapes or values in dbu to DShapes or floats in um."""
+    """Convert coordinates or a length from micrometers to database units.
+
+    Args:
+        other: A length, KLayout object with floating-point coordinates, or None.
+
+    Returns:
+        The integer-grid value or KLayout object, or None.
+    """
     if other is None:
         return None
     return kdb.CplxTrans(settings.dbu).inverted() * other

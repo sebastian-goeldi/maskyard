@@ -50,6 +50,14 @@ class Instance(SQLModel, Transformable, table=True):
     )
 
     def bbox(self, layer: Layer | None = None) -> kdb.Box:
+        """Compute the bounds of every placement in parent-cell coordinates.
+
+        Args:
+            layer: Limit the bounds to this layer, or use all layers by default.
+
+        Returns:
+            The enclosing box in database units.
+        """
         if self.na == 0 and self.nb == 0:
             return self.cell.bbox(layer).transformed(self.cplx_trans)
         cell_bb = self.cell.bbox(layer).transformed(self.cplx_trans)
@@ -87,6 +95,20 @@ class Instance(SQLModel, Transformable, table=True):
     def get_port(
         self, name: str, ia: int | None = None, ib: int | None = None
     ) -> InstancePort:
+        """Look up a child port at a particular instance placement.
+
+        Args:
+            name: Name of the port on the referenced cell.
+            ia: Index along the first array vector. Defaults to the first placement.
+            ib: Index along the second array vector. Defaults to the first placement.
+
+        Returns:
+            A view of the port in parent-cell coordinates.
+
+        Raises:
+            ValueError: If a supplied index reaches or exceeds the array size.
+            NoResultFound: If the referenced cell has no port with that name.
+        """
         session = get_context_session(self)
         if ia is not None and ia >= self.na:
             raise ValueError(
@@ -109,10 +131,12 @@ class Instance(SQLModel, Transformable, table=True):
 
     @property
     def trans(self) -> kdb.Trans:
+        """Return the simple integer form of the instance placement."""
         return self.cplx_trans.s_trans()
 
     @trans.setter
     def trans(self, value: kdb.Trans) -> None:
+        """Replace the placement with a simple integer transform."""
         self.cplx_trans = kdb.ICplxTrans(value)
 
     @property
@@ -133,18 +157,22 @@ class Instance(SQLModel, Transformable, table=True):
 
     @property
     def dcplx_trans(self) -> kdb.DCplxTrans:
+        """Return the complex placement in micrometers."""
         return kdb.DCplxTrans(self.cplx_trans, dbu=settings.dbu)
 
     @dcplx_trans.setter
     def dcplx_trans(self, value: kdb.DCplxTrans) -> None:
+        """Convert a complex micrometer transform to an integer placement."""
         self.cplx_trans = kdb.ICplxTrans(value, dbu=settings.dbu)
 
     @property
     def dtrans(self) -> kdb.DTrans:
+        """Return the simple form of the placement in micrometers."""
         return self.cplx_trans.s_trans().to_dtype(settings.dbu)
 
     @dtrans.setter
     def dtrans(self, value: kdb.DTrans) -> None:
+        """Convert a simple micrometer transform to an integer placement."""
         self.cplx_trans = kdb.ICplxTrans(kdb.DCplxTrans(value), dbu=settings.dbu)
 
     @overload
@@ -192,7 +220,33 @@ class Instance(SQLModel, Transformable, table=True):
         use_mirror: bool | None = None,
         use_angle: bool | None = None,
     ) -> Self:
+        """Align an instance port to a target port and commit the placement.
 
+        Args:
+            port: Source port name or a tuple of name and two array indices.
+            other: Target port or instance containing the target port.
+            other_port_name: Target port name or a tuple of name and two array indices
+                when the target is an instance.
+            mirror: Whether to reflect instead of using a half-turn for angular
+                alignment.
+            allow_width_mismatch: Reserved for width compatibility checks.
+            allow_layer_mismatch: Reserved for layer compatibility checks.
+            allow_type_mismatch: Reserved for port type compatibility checks.
+            allow_cross_section_mismatch: Reserved for cross-section compatibility
+                checks.
+            use_mirror: Whether angular alignment uses the target port's reflection.
+                Defaults to the configured behavior.
+            use_angle: Whether to align orientation as well as position. Defaults to the
+                configured behavior.
+
+        Returns:
+            The updated instance.
+
+        Raises:
+            ValueError: If a target instance is supplied without a port name or a
+                supplied array index exceeds its upper bound.
+            NoResultFound: If a named port does not exist.
+        """
         if allow_width_mismatch is None:
             allow_width_mismatch = settings.allow_width_mismatch
         if allow_layer_mismatch is None:

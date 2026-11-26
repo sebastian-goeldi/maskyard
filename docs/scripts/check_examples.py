@@ -11,6 +11,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def run(workdir: Path, database: str, *arguments: str) -> None:
+    """Execute a documentation example with isolated database and cache paths.
+
+    Args:
+        workdir: Working directory for the example and its outputs.
+        database: SQLite filename within the working directory.
+        *arguments: Arguments to pass to the current Python interpreter.
+    """
     subprocess.run(  # noqa: S603
         [sys.executable, *arguments],
         cwd=workdir,
@@ -24,6 +31,7 @@ def run(workdir: Path, database: str, *arguments: str) -> None:
 
 
 def check() -> None:
+    """Run examples and verify the generated chip, table, and viewer routes."""
     with TemporaryDirectory(prefix="maskyard-docs-") as directory:
         workdir = Path(directory)
         for example in ("quickstart", "batched_writes"):

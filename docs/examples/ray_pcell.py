@@ -7,6 +7,7 @@ pdk = get_or_create_pdk("ray_example")
 
 @pdk.pcell(ray=True)
 def rectangle(width: int) -> Cell:
+    """Build a rectangle 100 database units tall using the supplied width."""
     cell = get_or_create_pdk("ray_example").create_cell()
     cell.shapes(kdb.LayerInfo(1, 0)).insert(kdb.Box(0, 0, width, 100))
     return cell

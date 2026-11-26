@@ -38,13 +38,24 @@ class EnclosureDefinition(TypedDict, total=False):
 
 
 def _integer(value: object, field: str) -> int:
+    """Require a plain integer for an enclosure field."""
     if type(value) is not int:
         raise ValueError(f"{field} must be an integer DBU value")
     return value
 
 
 def canonical_definition(value: EnclosureDefinition) -> EnclosureDefinition:
-    """Validate, deduplicate, and sort an enclosure's JSON definition."""
+    """Validate, deduplicate, and sort an enclosure definition.
+
+    Args:
+        value: Mapping of enclosure bands and bounding-box expansions.
+
+    Returns:
+        The canonical definition suitable for comparison and storage.
+
+    Raises:
+        ValueError: If the definition contains unsupported keys or invalid values.
+    """
     if set(value) != {"bands", "bboxes"}:
         raise ValueError("definition must contain bands and bboxes")
     raw_bands = value["bands"]
@@ -117,6 +128,7 @@ class CanonicalEnclosureJSON(TypeDecorator[EnclosureDefinition]):
     def process_bind_param(
         self, value: EnclosureDefinition | None, dialect: Dialect
     ) -> str | None:
+        """Store the canonical enclosure definition as sorted JSON text."""
         if value is None:
             return None
         return json.dumps(
@@ -126,6 +138,7 @@ class CanonicalEnclosureJSON(TypeDecorator[EnclosureDefinition]):
     def process_result_value(
         self, value: str | None, dialect: Dialect
     ) -> EnclosureDefinition | None:
+        """Read an enclosure definition from its stored JSON text."""
         if value is None:
             return None
         return canonical_definition(json.loads(value))
@@ -163,7 +176,23 @@ def get_or_create_enclosure(
     definition: EnclosureDefinition,
     name: str | None = None,
 ) -> Enclosure:
-    """Stage an enclosure without acquiring an early write lock via flush."""
+    """Find or stage an enclosure by main layer and canonical geometry.
+
+    The caller controls when pending changes are flushed or committed.
+
+    Args:
+        session: Session used to look up and stage layers and enclosures.
+        main_layer: Layer around which the enclosure is defined.
+        definition: Bands and bounding-box expansions that describe the enclosure.
+        name: Optional unique name to associate with the geometry.
+
+    Returns:
+        A persisted or pending enclosure with matching geometry.
+
+    Raises:
+        ValueError: If the definition is invalid, a referenced layer is missing, or the
+            name conflicts with existing geometry.
+    """
     definition = deepcopy(definition)
     definition.setdefault("bands", [])
     definition.setdefault("bboxes", [])

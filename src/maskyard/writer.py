@@ -26,6 +26,8 @@ from .models.vector import Vector
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
+    from .typing import JSONSerializable
+
 
 @dataclass(frozen=True)
 class InstanceWrite:
@@ -56,8 +58,8 @@ class CellWrite:
 
     name: str
     geometry: bytes
-    info: dict[str, object] = field(default_factory=dict)
-    settings: dict[str, object] = field(default_factory=dict)
+    info: dict[str, JSONSerializable] = field(default_factory=dict)
+    settings: dict[str, JSONSerializable] = field(default_factory=dict)
     instances: tuple[InstanceWrite, ...] = ()
     ports: tuple[PortWrite, ...] = ()
     pcell_factory_id: int | None = None
@@ -65,11 +67,24 @@ class CellWrite:
 
     @classmethod
     def from_cell(cls, cell: Cell) -> Self:
-        """Snapshot a cell before handing it to another thread."""
+        """Snapshot an unsaved cell and its relationships for another thread.
+
+        Args:
+            cell: New cell with any unsaved child definitions available in memory.
+
+        Returns:
+            A snapshot containing serialized geometry and session-independent
+            relationships.
+
+        Raises:
+            ValueError: If the cell graph cannot be snapshotted, such as when it
+                contains a cycle or references an unsaved cross section.
+        """
         return cls._from_cell(cell, {}, set())
 
     @classmethod
     def _from_cell(cls, cell: Cell, seen: dict[int, Self], visiting: set[int]) -> Self:
+        """Recursively snapshot shared child cells and detect cycles."""
         if cell.id is not None:
             raise ValueError("CellWrite.from_cell requires a new, unsaved cell")
         if object_session(cell) is not None:
@@ -149,6 +164,17 @@ class CellWriter:
         batch_delay: float = 0.005,
         queue_size: int = 1024,
     ) -> None:
+        """Start a dedicated database writer thread.
+
+        Args:
+            engine: Database engine used by the worker's session.
+            batch_size: Maximum number of requests in one batch.
+            batch_delay: Maximum time in seconds spent waiting for more requests.
+            queue_size: Maximum number of requests waiting in the queue.
+
+        Raises:
+            ValueError: If either size is below one or the delay is negative.
+        """
         if batch_size < 1 or batch_delay < 0 or queue_size < 1:
             raise ValueError("Invalid writer batch or queue size")
         self._engine = engine
@@ -161,7 +187,18 @@ class CellWriter:
         self._thread.start()
 
     def submit_cell(self, cell: CellWrite, *, flush: bool = False) -> Future[int]:
-        """Queue a snapshot; the returned future completes after its commit."""
+        """Queue a snapshot for the writer thread.
+
+        Args:
+            cell: Session-independent snapshot to persist.
+            flush: Whether to end the current batch at this request.
+
+        Returns:
+            A future that resolves to the cell ID after its transaction commits.
+
+        Raises:
+            RuntimeError: If the writer has been shut down.
+        """
         future: Future[int] = Future()
         with self._lock:
             if self._closed:
@@ -178,6 +215,7 @@ class CellWriter:
         self._thread.join()
 
     def _run(self) -> None:
+        """Drain the queue into batches using one session on the writer thread."""
         with Session(self._engine, expire_on_commit=False) as session:
             while True:
                 first = self._requests.get()
@@ -202,6 +240,7 @@ class CellWriter:
                     return
 
     def _commit_batch(self, session: Session, batch: list[_Request]) -> None:
+        """Commit active requests together and resolve their futures."""
         active = [
             request
             for request in batch
@@ -230,6 +269,7 @@ class CellWriter:
 
     @staticmethod
     def _cell_id(cell: Cell) -> int:
+        """Read a flushed cell's ID and fail if the flush did not assign one."""
         if cell.id is None:
             raise RuntimeError("Flushed cell has no ID")
         return cell.id
@@ -237,6 +277,7 @@ class CellWriter:
     def _make_cell(
         self, session: Session, data: CellWrite, seen: dict[int, Cell]
     ) -> Cell:
+        """Rebuild a snapshot as ORM objects, reusing shared children."""
         identity = id(data)
         if identity in seen:
             return seen[identity]
@@ -321,7 +362,15 @@ def get_writer() -> CellWriter:
 
 
 def submit_cell(cell: Cell | CellWrite, *, flush: bool = False) -> Future[int]:
-    """Snapshot a new cell, then queue it for the dedicated writer."""
+    """Queue a new cell for the process-wide writer.
+
+    Args:
+        cell: Unsaved cell to snapshot, or an existing snapshot to queue directly.
+        flush: Whether to end the writer's batch at this request.
+
+    Returns:
+        A future that resolves to the committed cell ID.
+    """
     data = CellWrite.from_cell(cell) if isinstance(cell, Cell) else cell
     return get_writer().submit_cell(data, flush=flush)
 

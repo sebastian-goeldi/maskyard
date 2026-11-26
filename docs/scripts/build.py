@@ -26,10 +26,12 @@ class LocaleLinks(HTMLParser):
     """Collect generated links between the two locale builds."""
 
     def __init__(self) -> None:
+        """Initialize an HTML parser with an empty list of locale links."""
         super().__init__()
         self.links: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Collect the href from a generated locale switch."""
         attributes = dict(attrs)
         if tag == "a" and "data-locale-link" in attributes:
             href = attributes.get("href")
@@ -39,12 +41,19 @@ class LocaleLinks(HTMLParser):
 
 
 def locale_root(locale: str, version: str | None) -> Path:
+    """Resolve the output directory for a locale and optional version."""
     if version is None:
         return SITE / locale
     return VERSION_SITE / locale / version
 
 
 def build(version: str | None = None, branch: str = VERSION_BRANCH) -> None:
+    """Stage, build, and validate the English and Chinese documentation.
+
+    Args:
+        version: Version to deploy locally, or None to build unversioned pages.
+        branch: Local branch used for the versioned build.
+    """
     guides = {
         locale: {
             path.relative_to(SOURCE / locale)
@@ -135,6 +144,14 @@ def build(version: str | None = None, branch: str = VERSION_BRANCH) -> None:
 
 
 def deploy_locale(config: str, locale: str, version: str, branch: str) -> None:
+    """Deploy a version to a locale and set its default version.
+
+    Args:
+        config: Path to the locale's Zensical configuration.
+        locale: Language directory under the documentation site.
+        version: Documentation version to deploy.
+        branch: Local Git branch that will receive the deployment.
+    """
     mike = Path(sys.executable).with_name("mike")
     if os.name == "nt":
         mike = mike.with_suffix(".exe")
@@ -196,6 +213,13 @@ def deploy_locale(config: str, locale: str, version: str, branch: str) -> None:
 
 
 def publish(version: str) -> None:
+    """Build and push versioned documentation for both locales.
+
+    Retry if the remote documentation branch advances during the build.
+
+    Args:
+        version: Version tag or dev label to publish.
+    """
     git = shutil.which("git")
     if git is None:
         raise SystemExit("Git is required to publish docs")
@@ -206,6 +230,7 @@ def publish(version: str) -> None:
     pages_ref = f"refs/heads/{VERSION_BRANCH}"
 
     def remote_tip() -> str:
+        """Read the remote documentation branch tip, or return an empty string."""
         result = subprocess.check_output(  # noqa: S603
             [git, "ls-remote", "--refs", "origin", pages_ref], cwd=ROOT, text=True
         )

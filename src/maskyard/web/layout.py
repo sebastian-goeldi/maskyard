@@ -1,7 +1,7 @@
 """Convert persisted cell geometry into browser-friendly layout shapes."""
 
 from collections.abc import Iterable
-from typing import Any
+from typing import Literal, TypedDict
 
 import klayout.db as kdb
 
@@ -9,11 +9,68 @@ from maskyard.config import settings
 from maskyard.models.cell import Cell
 
 
+class _PolygonData(TypedDict):
+    kind: Literal["polygon"]
+    outer: list[int]
+    holes: list[list[int]]
+
+
+class _TextData(TypedDict):
+    kind: Literal["text"]
+    text: str
+    x: int
+    y: int
+    angle: int
+    mirror: bool
+    size: int
+
+
+class Placement(TypedDict):
+    x: int
+    y: int
+    angle: float
+    mag: float
+    mirror: bool
+
+
+class _InstanceData(TypedDict):
+    id: int | None
+    name: str | None
+    cell: str
+    placements: list[Placement]
+
+
+class _LayerSummary(TypedDict):
+    id: str
+    label: str
+    shapes: int
+
+
+class _LayerData(TypedDict):
+    id: str
+    shapes: list[_PolygonData | _TextData]
+
+
+class _CellData(TypedDict):
+    layers: list[_LayerData]
+    instances: list[_InstanceData]
+
+
+class _LayoutData(TypedDict):
+    dbu: float
+    root: str
+    bounds: list[int] | None
+    layers: list[_LayerSummary]
+    cells: dict[str, _CellData]
+
+
 def _coordinates(points: Iterable[kdb.Point]) -> list[int]:
+    """Flatten KLayout points into alternating X and Y coordinates in DBU."""
     return [coordinate for point in points for coordinate in (point.x, point.y)]
 
 
-def _polygon_data(polygon: kdb.Polygon) -> dict[str, Any]:
+def _polygon_data(polygon: kdb.Polygon) -> _PolygonData:
+    """Serialize a polygon's outer ring and holes for the viewer."""
     return {
         "kind": "polygon",
         "outer": _coordinates(polygon.each_point_hull()),
@@ -24,7 +81,8 @@ def _polygon_data(polygon: kdb.Polygon) -> dict[str, Any]:
     }
 
 
-def _shape_data(shape: kdb.Shape) -> dict[str, Any] | None:
+def _shape_data(shape: kdb.Shape) -> _PolygonData | _TextData | None:
+    """Encode a box, polygon, path, or label, returning None for other shapes."""
     if shape.is_box():
         box = shape.box
         return {
@@ -65,8 +123,19 @@ def _shape_data(shape: kdb.Shape) -> dict[str, Any] | None:
     return None
 
 
-def cell_layout_data(cell: Cell) -> dict[str, Any]:
-    """Return local cell shapes and instance placements without flattening them."""
+def cell_layout_data(cell: Cell) -> _LayoutData:
+    """Serialize local geometry and placements while preserving cell hierarchy.
+
+    Args:
+        cell: Persisted root cell to serialize.
+
+    Returns:
+        Viewer data containing root bounds, a layer summary, and per-cell geometry and
+        instance placements.
+
+    Raises:
+        ValueError: If the root cell has no persisted ID.
+    """
     if cell.id is None:
         raise ValueError("Cell must be persisted before rendering its layout")
 
@@ -82,12 +151,12 @@ def cell_layout_data(cell: Cell) -> dict[str, Any]:
         if model.geometry is not None:
             target.copy_shapes(model.geometry.kdb_cell)
 
-    instances_by_cell: dict[int, list[dict[str, Any]]] = {}
+    instances_by_cell: dict[int, list[_InstanceData]] = {}
     for model in models:
         if model.id is None:
             continue
         parent = layout_cells[model.id]
-        serialized_instances = []
+        serialized_instances: list[_InstanceData] = []
         for instance in model.instances:
             if instance.cell_id is None:
                 continue
@@ -122,12 +191,12 @@ def cell_layout_data(cell: Cell) -> dict[str, Any]:
 
     top = layout_cells[cell.id]
     bounds = top.bbox()
-    cells = {}
-    used_layers: dict[str, dict[str, Any]] = {}
+    cells: dict[str, _CellData] = {}
+    used_layers: dict[str, _LayerSummary] = {}
     for model in models:
         if model.id is None:
             continue
-        local_layers = []
+        local_layers: list[_LayerData] = []
         source = layout_cells[model.id]
         for index in layout.layer_indices():
             shapes = [

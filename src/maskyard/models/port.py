@@ -24,34 +24,32 @@ class Port(ABC):
 
     @property
     def cross_section(self) -> SymmetricCrossSection:
+        """Return the cross section that defines the port."""
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def transformation(self) -> kdb.Trans | kdb.DCplxTrans: ...
+    def transformation(self) -> kdb.Trans | kdb.DCplxTrans:
+        """Return the transform in the port's native representation."""
 
     @property
     @abstractmethod
-    def trans(self) -> kdb.Trans: ...
+    def trans(self) -> kdb.Trans:
+        """Return the port transform in integer database units."""
 
     @property
     @abstractmethod
-    def dcplx_trans(self) -> kdb.DCplxTrans: ...
+    def dcplx_trans(self) -> kdb.DCplxTrans:
+        """Return the complex port transform in micrometers."""
 
     @property
     def angle(self) -> Angle:
-        """Angle of the transformation.
-
-        In the range of `[0,1,2,3]` which are increments in 90°.
-        """
+        """Return the simple orientation in counterclockwise quarter turns."""
         return self.trans.angle
 
     @property
     def orientation(self) -> float:
-        """Returns orientation in degrees for gdsfactory compatibility.
-
-        In the range of `[0,360)`
-        """
+        """Return the complex orientation in degrees for gdsfactory compatibility."""
         return self.dcplx_trans.angle
 
     def transformed(
@@ -59,7 +57,15 @@ class Port(ABC):
         trans: kdb.Trans | kdb.DCplxTrans = kdb.Trans.R0,
         post_trans: kdb.Trans | kdb.DCplxTrans = kdb.Trans.R0,
     ) -> CellPort:
-        """Get a transformed copy of the BasePort."""
+        """Copy the port and compose additional transforms around its placement.
+
+        Args:
+            trans: Transform applied in the enclosing cell's coordinates.
+            post_trans: Transform applied in the port's local coordinates.
+
+        Returns:
+            A new cell port with the same cross-section reference.
+        """
 
         cell_port = CellPort(
             name=self.name,
@@ -88,27 +94,28 @@ class Port(ABC):
 
     @abstractmethod
     def dup(self) -> CellPort:
-        """Copy the port with a transformation."""
+        """Return a standalone cell port at the current placement."""
         ...
 
     @property
     def center(self) -> tuple:
-        """Returns port center."""
+        """Return the (x, y) center in integer database units."""
         d = self.trans.disp
         return (d.x, d.y)
 
     @property
     def x(self) -> int:
+        """Return the X coordinate in integer database units."""
         return self.trans.disp.x
 
     @property
     def y(self) -> int:
-        """Y coordinate of the port."""
+        """Return the Y coordinate in integer database units."""
         return self.trans.disp.y
 
     @property
     def width(self) -> int:
-        """Width of the port."""
+        """Return the cross-section width in database units."""
         return self.cross_section.width
 
     @property
@@ -118,6 +125,7 @@ class Port(ABC):
 
     @ix.setter
     def ix(self, value: int) -> None:
+        """Update the integer X coordinate on the available transform."""
         if self.trans:
             vec = self.trans.disp
             vec.x = value
@@ -134,6 +142,7 @@ class Port(ABC):
 
     @iy.setter
     def iy(self, value: int) -> None:
+        """Update the integer Y coordinate on the available transform."""
         if self.trans:
             vec = self.trans.disp
             vec.y = value
@@ -143,11 +152,6 @@ class Port(ABC):
             vec.y = value
             self.dcplx_trans.disp = to_um(vec)
 
-    # @property
-    # def iwidth(self) -> int:
-    #     """Width of the port in dbu."""
-    #     return self.any_cross_section.width
-
     @property
     def dx(self) -> float:
         """X coordinate of the port in um."""
@@ -155,6 +159,7 @@ class Port(ABC):
 
     @dx.setter
     def dx(self, value: float) -> None:
+        """Update the X coordinate in micrometers on the available transform."""
         vec = self.dcplx_trans.disp
         vec.x = value
         if self.trans:
@@ -169,6 +174,7 @@ class Port(ABC):
 
     @dy.setter
     def dy(self, value: float) -> None:
+        """Update the Y coordinate in micrometers on the available transform."""
         vec = self.dcplx_trans.disp
         vec.y = value
         if self.trans:
@@ -184,6 +190,7 @@ class Port(ABC):
 
     @dcenter.setter
     def dcenter(self, pos: tuple[float, float]) -> None:
+        """Update both center coordinates in micrometers."""
         if self.trans:
             self.trans.disp = to_dbu(kdb.DVector(*pos))
         elif self.dcplx_trans:
@@ -197,20 +204,11 @@ class Port(ABC):
 
     @icenter.setter
     def icenter(self, pos: tuple[int, int]) -> None:
+        """Update both center coordinates in integer database units."""
         if self.trans:
             self.trans.disp = kdb.Vector(*pos)
         elif self.dcplx_trans:
             self.dcplx_trans.disp = to_um(kdb.Vector(*pos))
-
-    # @property
-    # def dwidth(self) -> float:
-    #     """Width of the port in um."""
-    #     return to_um(self.any_cross_section.width)
-
-    # @abstractmethod
-    # def print(self, print_type: Literal["dbu", "um"] | None = None) -> None: ...
-    # @abstractmethod
-    # def __repr__(self) -> str: ...
 
 
 class CellPort(SQLModel, Port, Transformable, table=True):
@@ -230,6 +228,7 @@ class CellPort(SQLModel, Port, Transformable, table=True):
 
     @property
     def trans(self) -> kdb.Trans:
+        """Return a copy of the port's simple transform in database units."""
         if isinstance(self.transformation, kdb.Trans):
             return self.transformation.dup()
 
@@ -237,10 +236,12 @@ class CellPort(SQLModel, Port, Transformable, table=True):
 
     @trans.setter
     def trans(self, value: kdb.Trans) -> None:
+        """Store a copy of the simple integer transform."""
         self.transformation = value.dup()
 
     @property
     def dcplx_trans(self) -> kdb.DCplxTrans:
+        """Return a copy of the port's complex transform in micrometers."""
         if isinstance(self.transformation, kdb.Trans):
             return kdb.DCplxTrans(self.transformation.to_dtype(settings.dbu))
 
@@ -248,6 +249,7 @@ class CellPort(SQLModel, Port, Transformable, table=True):
 
     @dcplx_trans.setter
     def dcplx_trans(self, value: kdb.DCplxTrans) -> None:
+        """Store a copy of the complex micrometer transform."""
         self.transformation = value.dup()
 
     @property
@@ -268,16 +270,18 @@ class CellPort(SQLModel, Port, Transformable, table=True):
 
     @Port.angle.setter
     def angle(self, value: int) -> None:
+        """Store the current placement in its simple integer representation."""
         self.trans = self.trans
 
     @Port.center.setter
     def center(self, value: tuple[int, int]) -> None:
+        """Update X and Y through the integer coordinate setters."""
         self.x = value[0]
         self.y = value[1]
 
     @Port.orientation.setter
     def orientation(self, value: float) -> None:
-        """Set the orientation of the port."""
+        """Update the orientation in degrees through the complex transform."""
         if not self.dcplx_trans.is_complex():
             dcplx_trans = self.dcplx_trans
             dcplx_trans.angle = value
@@ -288,6 +292,7 @@ class CellPort(SQLModel, Port, Transformable, table=True):
 
     @Port.x.setter
     def x(self, value: int) -> None:
+        """Update X on the integer grid when the placement can represent it."""
         if isinstance(self.transformation, kdb.Trans):
             disp = self.transformation.disp
             disp.x = value
@@ -302,6 +307,7 @@ class CellPort(SQLModel, Port, Transformable, table=True):
 
     @Port.y.setter
     def y(self, value: int) -> None:
+        """Update Y on the integer grid when the placement can represent it."""
         if isinstance(self.transformation, kdb.Trans):
             disp = self.transformation.disp
             disp.y = value
@@ -344,19 +350,8 @@ class CellPort(SQLModel, Port, Transformable, table=True):
         return self
 
     def dup(self) -> CellPort:
+        """Copy the cell port at its current placement."""
         return self.transformed()
-
-    # def __repr__(self) -> str:
-    #     """String representation of port."""
-    #     return (
-    #         f"{self.__class__.__name__}({self.name=}"
-    #         f", {self.width=}, trans={self.dcplx_trans.to_s()}, layer="
-    #         f"{self.layer_info}, port_type={self.port_type})"
-    #     )
-
-    # def print(self, print_type: Literal[dbu, um] | None = None) -> None:
-    #     """Print the port pretty."""
-    #     config.console.print(pprint_ports([self], unit=print_type))
 
 
 @dataclass
@@ -368,6 +363,7 @@ class InstancePort(Port):
 
     @property
     def cross_section(self) -> SymmetricCrossSection:
+        """Return the referenced cell port's cross section."""
         return self.cell_port.cross_section
 
     @property
@@ -406,6 +402,7 @@ class InstancePort(Port):
 
     @property
     def trans(self) -> kdb.Trans:
+        """Express the derived parent-cell placement in integer database units."""
         if isinstance(self.transformation, kdb.Trans):
             return self.transformation.dup()
 
@@ -413,10 +410,12 @@ class InstancePort(Port):
 
     @property
     def dcplx_trans(self) -> kdb.DCplxTrans:
+        """Express the derived parent-cell placement in micrometers."""
         if isinstance(self.transformation, kdb.Trans):
             return kdb.DCplxTrans(self.transformation.to_dtype(settings.dbu))
 
         return self.transformation.dup()
 
     def dup(self) -> CellPort:
+        """Make a standalone copy in parent-cell coordinates."""
         return self.transformed()

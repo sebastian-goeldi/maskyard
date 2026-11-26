@@ -26,6 +26,7 @@ def test_cell_graph_groups_instances_by_parent_and_child(test_engine: Engine) ->
         child_id = child.id
         parent_id = parent.id
 
+    assert child_id is not None
     request = Request(
         {
             "type": "http",
@@ -43,7 +44,7 @@ def test_cell_graph_groups_instances_by_parent_and_child(test_engine: Engine) ->
     assert response.status_code == 200
     graph_json = re.search(
         r'<script id="graph-data" type="application/json">(.*?)</script>',
-        response.body.decode(),
+        bytes(response.body).decode(),
     )
     assert graph_json is not None
     graph = json.loads(graph_json.group(1))

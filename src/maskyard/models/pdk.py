@@ -66,7 +66,7 @@ def _run_remote_pcell(
     pdk_name: str,
     database_url: str,
     args: tuple[object, ...],
-    kwargs: dict[str, object],
+    kwargs: Mapping[str, object],
     drop_params: tuple[str, ...],
     type_serializers: tuple[tuple[type | UnionType, _Serializer], ...],
     type_hints_serializer: _SerializerMap | None,
@@ -93,12 +93,12 @@ def _run_remote_pcell(
     return cell.id
 
 
-class RemotePCell:
-    """Cache Ray object references for equivalent PCell submissions."""
+class RemotePCell[**PCellParams]:
+    """Submit a typed PCell factory and cache equivalent Ray references."""
 
     def __init__(
         self,
-        factory: Callable[..., Cell],
+        factory: Callable[PCellParams, Cell],
         pdk_name: str,
         database_url: str,
         signature: inspect.Signature,
@@ -121,7 +121,9 @@ class RemotePCell:
         self.__name__ = get_function_name(factory)
         self.__signature__ = signature
 
-    def remote(self, *args: object, **kwargs: object) -> ObjectRef[int]:
+    def remote(
+        self, *args: PCellParams.args, **kwargs: PCellParams.kwargs
+    ) -> ObjectRef[int]:
         """Reuse a matching Ray reference or submit the factory to a worker.
 
         A failed cached task is discarded so a subsequent call can retry it.
@@ -212,7 +214,7 @@ class Pdk(SQLModel, table=True):
     @overload
     def pcell[**P](
         self, function: Callable[P, Cell], /, *, ray: Literal[True]
-    ) -> RemotePCell: ...
+    ) -> RemotePCell[P]: ...
 
     @overload
     def pcell[**P](
@@ -222,7 +224,7 @@ class Pdk(SQLModel, table=True):
         *,
         ray: Literal[True],
         **kwargs: Unpack[_PCellOptions],
-    ) -> Callable[[Callable[P, Cell]], RemotePCell]: ...
+    ) -> Callable[[Callable[P, Cell]], RemotePCell[P]]: ...
 
     @overload
     def pcell[**P](
@@ -253,8 +255,8 @@ class Pdk(SQLModel, table=True):
         ray: bool = False,
     ) -> (
         Callable[P, Cell]
-        | RemotePCell
-        | Callable[[Callable[P, Cell]], Callable[P, Cell] | RemotePCell]
+        | RemotePCell[P]
+        | Callable[[Callable[P, Cell]], Callable[P, Cell] | RemotePCell[P]]
     ):
         """Register a parametrized cell factory and reuse cells for matching inputs.
 
@@ -282,7 +284,7 @@ class Pdk(SQLModel, table=True):
 
         def decorate(
             factory: Callable[P, Cell],
-        ) -> Callable[P, Cell] | RemotePCell:
+        ) -> Callable[P, Cell] | RemotePCell[P]:
             """Register a factory and build the synchronous wrapper or remote handle."""
             sig = inspect.signature(factory)
             file = _get_path(factory)

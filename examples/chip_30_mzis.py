@@ -1,3 +1,4 @@
+# ruff: noqa: INP001
 """Thirty MZIs built as maskyard PCells.
 
 Run from the project root:
@@ -12,25 +13,27 @@ from __future__ import annotations
 import argparse
 import csv
 import os
+import sys
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import fresnel
 from sqlmodel import select
 
-# Maskyard reads the database URL during import, so configure a temporary cache first.
-# _cache_dir = TemporaryDirectory(prefix="maskyard-mzi-")
+# Maskyard reads the database URL during import, so set the example cache first.
 _cache = Path.cwd().resolve() / "maskyard.db"
 os.environ.setdefault("MASKYARD_DATABASE_URL", f"sqlite:///{_cache}")
 
 from maskyard import get_or_create_pdk, kdb  # noqa: E402
 from maskyard.config import to_dbu  # noqa: E402
 from maskyard.engine import get_session  # noqa: E402
-from maskyard.models.cell import Cell  # noqa: E402
 from maskyard.models.cross_section import SymmetricCrossSection  # noqa: E402
 from maskyard.models.enclosure import get_or_create_enclosure  # noqa: E402
 from maskyard.models.layer import Layer  # noqa: E402
+
+if TYPE_CHECKING:
+    from maskyard.models.cell import Cell
 
 DBU = 0.001
 WIDTH = 0.5
@@ -46,16 +49,19 @@ OUTLINE = kdb.LayerInfo(99, 0)
 
 
 def nm(x: float) -> int:
+    """Convert a micrometer coordinate to the example's one-nanometer grid."""
     return round(x / DBU)
 
 
 def box(
     cell: Cell, layer: kdb.LayerInfo, x1: float, y1: float, x2: float, y2: float
 ) -> None:
+    """Insert a rectangle whose corner coordinates are in micrometers."""
     cell.shapes(layer).insert(kdb.Box(nm(x1), nm(y1), nm(x2), nm(y2)))
 
 
 def taper(cell: Cell, x1: float, x2: float, y: float, w1: float, w2: float) -> None:
+    """Insert a waveguide taper with endpoints and widths in micrometers."""
     cell.shapes(WG).insert(
         kdb.Polygon(
             [
@@ -71,10 +77,21 @@ def taper(cell: Cell, x1: float, x2: float, y: float, w1: float, w2: float) -> N
 def euler_bend_points(
     angle_amount: float = 90, radius: float = 100, resolution: float = 150
 ) -> list[kdb.DPoint]:
-    """Generate an Euler bend backbone starting at the origin.
+    """Sample an Euler bend backbone from the origin.
 
-    Adapted from KFactory's euler_bend_points (MIT license); see
-    EULER_LICENSE.txt for the retained copyright and license notice.
+    Adapted from KFactory's euler_bend_points (MIT license). See EULER_LICENSE.txt for
+    the retained copyright and license notice.
+
+    Args:
+        angle_amount: Total turn in degrees.
+        radius: Radius at the midpoint of the bend in micrometers.
+        resolution: Sampling density per radian of the half-angle.
+
+    Returns:
+        Points in micrometers, including both endpoints.
+
+    Raises:
+        ValueError: If the total turn is negative.
     """
     if angle_amount < 0:
         raise ValueError(f"angle_amount should be positive. Got {angle_amount}")
@@ -89,6 +106,7 @@ def euler_bend_points(
     fs_end, fc_end = fresnel(np.sqrt(2 / np.pi) * radius * half_angle / scale)
 
     def point_at(distance: float) -> kdb.DPoint:
+        """Evaluate the piecewise Euler backbone at an arc distance."""
         if distance <= total_length / 2:
             fs, fc = fresnel(distance / factor)
             x = factor * fc
@@ -116,12 +134,12 @@ enclosure = get_or_create_enclosure(
     session, main_layer=layer, definition={}, name="strip_enclosure"
 )
 session.commit()
-strip = session.exec(
+saved_strip = session.exec(
     select(SymmetricCrossSection).where(
         SymmetricCrossSection.canonical_name == "strip_500nm"
     )
 ).first()
-if strip is None:
+if saved_strip is None:
     strip = SymmetricCrossSection(
         name="strip",
         canonical_name="strip_500nm",
@@ -131,11 +149,23 @@ if strip is None:
     )
     session.add(strip)
     session.commit()
+else:
+    strip = saved_strip
 
 
 @pdk.pcell(use_writer=True)
 def straight(length: float) -> Cell:
-    """Strip waveguide with west and east ports."""
+    """Build a strip waveguide with west- and east-facing ports.
+
+    Args:
+        length: Positive waveguide length in micrometers.
+
+    Returns:
+        The straight waveguide cell.
+
+    Raises:
+        ValueError: If the length is nonpositive.
+    """
     if length <= 0:
         raise ValueError("Straight length must be positive")
     cell = pdk.create_cell(persist=False)
@@ -147,7 +177,14 @@ def straight(length: float) -> Cell:
 
 @pdk.pcell(use_writer=True)
 def bend_euler(radius: float = RADIUS) -> Cell:
-    """Maskyard Euler bend PCell using the local backbone generator."""
+    """Build a quarter-turn strip waveguide from an Euler backbone.
+
+    Args:
+        radius: Bend radius passed to the backbone generator, in micrometers.
+
+    Returns:
+        The bend cell with ports at the backbone endpoints.
+    """
     cell = pdk.create_cell(persist=False)
     points = euler_bend_points(angle_amount=90, radius=radius)
     cell.shapes(WG).insert(to_dbu(kdb.DPath(points, WIDTH)))
@@ -159,7 +196,7 @@ def bend_euler(radius: float = RADIUS) -> Cell:
 
 @pdk.pcell(use_writer=True)
 def mmi1x2() -> Cell:
-    """A tapered 1x2 MMI with the same port pattern as gdsfactory's."""
+    """Build a tapered splitter with one input port and two output ports."""
     cell = pdk.create_cell(persist=False)
     box(cell, WG, 0, -3, 20, 3)
     box(cell, WG, -10, -WIDTH / 2, -6, WIDTH / 2)
@@ -175,7 +212,14 @@ def mmi1x2() -> Cell:
 
 @pdk.pcell(use_writer=True)
 def arm_transition(offset: float) -> Cell:
-    """Two quarter bends with a vertical leg; both ports face horizontally."""
+    """Connect two horizontal port directions using a pair of quarter bends.
+
+    Args:
+        offset: Vertical separation between the endpoints in micrometers.
+
+    Returns:
+        The arm transition cell with its intervening straight segment.
+    """
     extent = nm(euler_bend_points(angle_amount=90, radius=RADIUS)[-1].x) * DBU
     vertical = offset - 2 * extent
     if vertical <= 0:
@@ -200,7 +244,14 @@ def arm_transition(offset: float) -> Cell:
 
 @pdk.pcell(use_writer=True)
 def mzi(delta_length: float) -> Cell:
-    """MMI splitter, unequal arms, and a mirrored MMI combiner."""
+    """Build a Mach-Zehnder interferometer with a mirrored output combiner.
+
+    Args:
+        delta_length: Added optical path length in one arm in micrometers.
+
+    Returns:
+        The interferometer cell with input and output ports.
+    """
     if delta_length < 0:
         raise ValueError("delta_length must be nonnegative")
     cell = pdk.create_cell(persist=False)
@@ -237,7 +288,7 @@ def mzi(delta_length: float) -> Cell:
 
 @pdk.pcell(use_writer=True)
 def fill_wg() -> Cell:
-    """A 200 nm square waveguide fill motif."""
+    """Build the 200 nm square waveguide fill pattern."""
     cell = pdk.create_cell("FILL_WG", persist=False)
     box(cell, WG, 0, 0, 0.2, 0.2)
     return cell
@@ -245,7 +296,10 @@ def fill_wg() -> Cell:
 
 @pdk.pcell(use_writer=True)
 def chip() -> Cell:
-    """Five columns by six rows, with path differences of 2–60 um."""
+    """Arrange 30 interferometers in five columns and six rows.
+
+    Path-length differences run from 2 to 60 micrometers.
+    """
     cell = pdk.create_cell(persist=False)
     for index in range(30):
         delta_length = 2.0 * (index + 1)
@@ -280,6 +334,7 @@ def chip() -> Cell:
 
 
 def main() -> None:
+    """Export the filled chip layout and its interferometer parameter table."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output", type=Path, default=Path(__file__).with_suffix(".gds")
@@ -340,7 +395,7 @@ def main() -> None:
                     y,
                 ]
             )
-    print(f"Wrote {args.output} and {table}")
+    sys.stdout.write(f"Wrote {args.output} and {table}\n")
 
 
 if __name__ == "__main__":

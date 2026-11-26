@@ -36,6 +36,7 @@ class PortTrans(TypeDecorator[kdb.Trans | kdb.DCplxTrans]):
     def process_bind_param(
         self, value: kdb.Trans | kdb.DCplxTrans | None, dialect: Dialect
     ) -> bytes | None:
+        """Prefix a port transform's bytes with its representation tag."""
         if value is None:
             return None
         if isinstance(value, kdb.Trans):
@@ -45,6 +46,7 @@ class PortTrans(TypeDecorator[kdb.Trans | kdb.DCplxTrans]):
     def process_result_value(
         self, value: bytes | None, dialect: Dialect
     ) -> kdb.Trans | kdb.DCplxTrans | None:
+        """Decode a simple or complex port transform using its stored tag."""
         if value is None:
             return None
         trans_type = Transformation(value[0])
@@ -60,6 +62,7 @@ class InstanceTrans(TypeDecorator[kdb.ICplxTrans]):
     def process_bind_param(
         self, value: kdb.ICplxTrans | None, dialect: Dialect
     ) -> bytes | None:
+        """Encode a complex integer placement for database storage."""
         if value is None:
             return None
         return value.to_bytes()
@@ -67,6 +70,7 @@ class InstanceTrans(TypeDecorator[kdb.ICplxTrans]):
     def process_result_value(
         self, value: bytes | None, dialect: Dialect
     ) -> kdb.ICplxTrans | None:
+        """Decode the placement and restore its 64-bit displacement."""
         if value is None:
             return None
         trans = kdb.ICplxTrans.from_bytes(value)

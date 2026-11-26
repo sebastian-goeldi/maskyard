@@ -17,17 +17,51 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import TYPE_CHECKING, TypedDict, cast
 from uuid import uuid4
 
 import klayout.db as kdb
 from sqlalchemy.engine import make_url
-from sqlmodel import select
+from sqlmodel import col, select
 
 from maskyard.config import settings
 from maskyard.engine import session_context
 from maskyard.models.cell import Cell
 from maskyard.models.geometry import Geometry
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+
+class _ChunkData(TypedDict):
+    file: str
+    bbox: list[int] | None
+    shapes: int
+
+
+class CachedLayer(TypedDict):
+    id: str
+    label: str
+    shapes: int
+    chunks: list[_ChunkData]
+
+
+class CellCache(TypedDict):
+    layers: list[CachedLayer]
+
+
+class _CellIndex(TypedDict):
+    version: int
+    dbu: float
+    database_stamp: int | None
+    cell: CellCache
+
+
+class CacheIndex(TypedDict):
+    version: int
+    dbu: float
+    cells: dict[str, CellCache]
+
 
 FORMAT_VERSION = 1
 MAX_CHUNK_BYTES = 256 * 1024
@@ -36,6 +70,7 @@ _cell_locks: dict[int, Lock] = {}
 
 
 def cache_dir() -> Path:
+    """Resolve the configured render cache directory or derive it from the database."""
     if settings.layout_cache_dir is not None:
         return settings.layout_cache_dir.resolve()
     database = make_url(settings.database_url)
@@ -48,16 +83,19 @@ def cache_dir() -> Path:
 
 
 def box_data(box: kdb.Box) -> list[int] | None:
+    """Return the box edges in DBU, or None for an empty box."""
     if box.empty():
         return None
     return [box.left, box.bottom, box.right, box.top]
 
 
-def _points(points: Any) -> list[kdb.Point]:
+def _points(points: Iterable[kdb.Point]) -> list[kdb.Point]:
+    """Materialize the points of a polygon ring for binary encoding."""
     return list(points)
 
 
 def _shape_record(shape: kdb.Shape) -> bytes | None:
+    """Encode a supported KLayout shape as one binary record."""
     if shape.is_box():
         box = shape.box
         return struct.pack("<B4i", 1, box.left, box.bottom, box.right, box.top)
@@ -110,6 +148,7 @@ class _Chunk:
     shapes: int = 0
 
     def add(self, record: bytes, bounds: kdb.Box) -> None:
+        """Append a shape record and expand the chunk's bounds and shape count."""
         self.payload.extend(record)
         self.bbox += bounds
         self.shapes += 1
@@ -118,10 +157,11 @@ class _Chunk:
 def _flush_chunk(
     tile: tuple[int, int],
     tiles: dict[tuple[int, int], _Chunk],
-    layer: dict[str, Any],
+    layer: CachedLayer,
     layer_index: int,
     cell_dir: Path,
 ) -> None:
+    """Publish a compressed tile chunk and append its layer index entry."""
     chunk = tiles.pop(tile)
     number = len(layer["chunks"])
     filename = f"{layer_index}_{number}.bin.gz"
@@ -134,7 +174,8 @@ def _flush_chunk(
     )
 
 
-def _build_cell_layout(cell_id: int, layout: kdb.Layout) -> dict[str, Any]:
+def _build_cell_layout(cell_id: int, layout: kdb.Layout) -> CellCache:
+    """Encode the local TOP geometry into spatially tiled layer chunks."""
     root = cache_dir()
     root.mkdir(parents=True, exist_ok=True)
     tile_size = max(1, round(500 / settings.dbu))
@@ -150,7 +191,7 @@ def _build_cell_layout(cell_id: int, layout: kdb.Layout) -> dict[str, Any]:
         label = f"{info.layer}/{info.datatype}"
         if info.name:
             label = f"{info.name} ({label})"
-        layer: dict[str, Any] = {
+        layer: CachedLayer = {
             "id": f"{info.layer}/{info.datatype}",
             "label": label,
             "shapes": 0,
@@ -200,11 +241,13 @@ def _database_stamp() -> int | None:
 
 
 @lru_cache(maxsize=256)
-def _read_cell_index(path: Path, _modified_ns: int) -> dict[str, Any]:
-    return json.loads(path.read_text())
+def _read_cell_index(path: Path, _modified_ns: int) -> _CellIndex:
+    """Read the per-cell manifest, caching it by path and modification time."""
+    return cast("_CellIndex", json.loads(path.read_text()))
 
 
-def _valid_cell_index(path: Path, stamp: int | None) -> dict[str, Any] | None:
+def _valid_cell_index(path: Path, stamp: int | None) -> CellCache | None:
+    """Reuse a per-cell manifest if its format, DBU, and database stamp match."""
     if not path.is_file():
         return None
     value = _read_cell_index(path, path.stat().st_mtime_ns)
@@ -217,8 +260,19 @@ def _valid_cell_index(path: Path, stamp: int | None) -> dict[str, Any] | None:
     return None
 
 
-def get_cell_cache(cell_id: int, *, force: bool = False) -> dict[str, Any]:
-    """Return cached shapes, generating this cell on its first request."""
+def get_cell_cache(cell_id: int, *, force: bool = False) -> CellCache:
+    """Return or build the render cache for one cell.
+
+    Args:
+        cell_id: Database ID of the cell whose local geometry is requested.
+        force: Whether to rebuild the chunks even when a current index exists.
+
+    Returns:
+        The cell's layers and binary chunk descriptors.
+
+    Raises:
+        LookupError: If the cell ID is missing from the database.
+    """
     stamp = _database_stamp()
     cell_dir = cache_dir() / str(cell_id)
     path = cell_dir / "index.json"
@@ -267,11 +321,17 @@ def get_cell_cache(cell_id: int, *, force: bool = False) -> dict[str, Any]:
         return cached
 
 
-def build_cache() -> dict[str, Any]:
-    """Optionally precompute render chunks for every persisted cell."""
+def build_cache() -> CacheIndex:
+    """Precompute layout chunks for persisted cells that have geometry.
+
+    Publish a global index and remove binary chunks it no longer references.
+
+    Returns:
+        The global index mapping cell IDs to their cache entries.
+    """
     root = cache_dir()
     root.mkdir(parents=True, exist_ok=True)
-    index: dict[str, Any] = {
+    index: CacheIndex = {
         "version": FORMAT_VERSION,
         "dbu": settings.dbu,
         "cells": {},
@@ -279,7 +339,9 @@ def build_cache() -> dict[str, Any]:
 
     with session_context() as session:
         rows = session.exec(
-            select(Cell.id, Geometry.layout).join(Geometry, Cell.id == Geometry.id)
+            select(col(Cell.id), col(Geometry.layout)).join(
+                Geometry, col(Cell.id) == Geometry.id
+            )
         )
         for cell_id, layout in rows:
             if cell_id is None:
@@ -306,8 +368,9 @@ def build_cache() -> dict[str, Any]:
 
 
 @lru_cache(maxsize=4)
-def _read_cache_index(path: Path, _modified_ns: int) -> dict[str, Any]:
-    index = json.loads(path.read_text())
+def _read_cache_index(path: Path, _modified_ns: int) -> CacheIndex:
+    """Load the global index and validate its format version and database unit."""
+    index = cast("CacheIndex", json.loads(path.read_text()))
     if index.get("version") != FORMAT_VERSION or index.get("dbu") != settings.dbu:
         raise ValueError(
             "Render cache format or DBU differs from the database; rebuild it"
@@ -315,7 +378,13 @@ def _read_cache_index(path: Path, _modified_ns: int) -> dict[str, Any]:
     return index
 
 
-def load_cache_index() -> dict[str, Any]:
+def load_cache_index() -> CacheIndex:
+    """Load the global index, returning an empty index if missing or stale.
+
+    Raises:
+        ValueError: If the stored format version or DBU differs from the current
+            settings.
+    """
     path = cache_dir() / "index.json"
     if not path.is_file() or (
         (stamp := _database_stamp()) is not None and path.stat().st_mtime_ns < stamp
@@ -325,7 +394,7 @@ def load_cache_index() -> dict[str, Any]:
 
 
 def main() -> None:
-    """Console entry point for rebuilding the persisted web geometry cache."""
+    """Rebuild the render cache and report where it was saved."""
     result = build_cache()
     sys.stdout.write(f"Cached {len(result['cells'])} cells at {cache_dir()}\n")
 

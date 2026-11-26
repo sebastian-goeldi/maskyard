@@ -29,7 +29,17 @@ _initial_dbu: ContextVar[float] = ContextVar("initial_dbu", default=DEFAULT_DBU)
 
 
 def create_db_and_tables(*, dbu: float = DEFAULT_DBU) -> None:
-    """Initialize the cache and purge it if its schema version is outdated."""
+    """Initialize the layout cache for the requested database unit.
+
+    Migrate a compatible older schema and rebuild the cache if its schema or DBU is
+    incompatible.
+
+    Args:
+        dbu: Size of one database unit in micrometers.
+
+    Raises:
+        ValueError: If the requested DBU is nonpositive.
+    """
     if _initialized.is_set() and settings.dbu == dbu:
         return
     with _schema_lock:
@@ -43,6 +53,7 @@ def create_db_and_tables(*, dbu: float = DEFAULT_DBU) -> None:
 
 
 def _register_engine(cache_engine: Engine) -> None:
+    """Register schema initialization and disposal hooks once per engine."""
     with _registration_lock:
         if not event.contains(cache_engine, "engine_connect", _on_engine_connect):
             event.listen(cache_engine, "engine_connect", _on_engine_connect)
@@ -50,6 +61,7 @@ def _register_engine(cache_engine: Engine) -> None:
 
 
 def _on_engine_connect(connection: Connection) -> None:
+    """Initialize and commit the schema on the first connection."""
     with _schema_lock:
         if _initialized.is_set():
             return
@@ -61,6 +73,7 @@ def _on_engine_connect(connection: Connection) -> None:
 
 
 def _on_engine_disposed(_engine: Engine) -> None:
+    """Invalidate cached DBU and sessions when the engine is disposed."""
     global _engine_generation  # noqa: PLW0603
     with _schema_lock:
         with suppress(AttributeError):
@@ -75,6 +88,7 @@ def _on_engine_disposed(_engine: Engine) -> None:
 
 
 def _stored_schema_version(connection: Connection, tables: set[str]) -> int | None:
+    """Read the schema version if the configuration table and column exist."""
     if _config_table.name not in tables:
         return None
     columns = {
@@ -88,6 +102,7 @@ def _stored_schema_version(connection: Connection, tables: set[str]) -> int | No
 
 
 def _initialize_schema(connection: Connection, *, dbu: float) -> None:
+    """Migrate or rebuild the cache to match the current schema and DBU."""
     if dbu <= 0:
         raise ValueError("DBU must be positive")
     tables = set(inspect(connection).get_table_names())
@@ -146,6 +161,7 @@ def _initialize_schema(connection: Connection, *, dbu: float) -> None:
 
 
 def _protect_dbu(connection: Connection) -> None:
+    """Install SQLite triggers that guard the saved database configuration."""
     if connection.dialect.name == "sqlite":
         connection.exec_driver_sql(
             "CREATE TRIGGER IF NOT EXISTS databaseconfig_dbu_readonly "
@@ -166,6 +182,7 @@ _current_session: ContextVar[tuple[int, Engine, int, Session] | None] = ContextV
 
 
 def get_session() -> Session:
+    """Return the current session, opening one for this thread if needed."""
     current = _current_session.get()
     thread_id = get_ident()
     if current is not None and current[0] == thread_id:
@@ -210,6 +227,17 @@ def _close_thread_sessions(thread_ids: set[int]) -> None:
 
 
 def get_context_session(model: SQLModel) -> SASession:
+    """Find the session that owns a model.
+
+    Args:
+        model: ORM object whose owning session is needed.
+
+    Returns:
+        The session to which the model is attached.
+
+    Raises:
+        RuntimeError: If the model is detached or has never been added to a session.
+    """
     session = object_session(model)
     if session is None:
         raise RuntimeError(f"{model.__class__} is not attached to a session")
@@ -219,6 +247,14 @@ def get_context_session(model: SQLModel) -> SASession:
 
 @contextmanager
 def session_context(*, expire_on_commit: bool = True) -> Generator[Session]:
+    """Temporarily make a new session current for this thread.
+
+    Args:
+        expire_on_commit: Whether to expire ORM objects after each commit.
+
+    Yields:
+        The new session, which closes when the context exits.
+    """
     if not _initialized.is_set():
         create_db_and_tables()
     with Session(engine, expire_on_commit=expire_on_commit) as session:

@@ -15,11 +15,13 @@ _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 def _value(node: ET.Element, name: str) -> str | None:
+    """Read and trim the text of a named XML child element."""
     child = node.find(name)
     return child.text.strip() if child is not None and child.text else None
 
 
 def _pattern_rows(node: ET.Element) -> list[str]:
+    """Read and validate the rows of a custom KLayout stipple pattern."""
     rows = [(line.text or "").strip() for line in node.findall("./pattern/line")]
     if (
         not rows
@@ -31,9 +33,11 @@ def _pattern_rows(node: ET.Element) -> list[str]:
 
 
 def _parse_list(root: ET.Element, styles: dict[str, dict]) -> None:
+    """Populate viewer styles from one KLayout layer-properties list."""
     patterns = [_pattern_rows(node) for node in root.findall("custom-dither-pattern")]
 
     def visit(node: ET.Element, inherited: dict[str, str]) -> None:
+        """Apply inherited display options and visit nested layer groups."""
         values = inherited.copy()
         for field in (
             "frame-color",
@@ -96,6 +100,7 @@ def _parse_list(root: ET.Element, styles: dict[str, dict]) -> None:
 
 @lru_cache(maxsize=8)
 def _read(path: Path, modified_ns: int) -> dict[str, dict]:
+    """Parse and cache layer properties by file path and modification time."""
     del modified_ns
     try:
         root = ET.parse(path).getroot()  # noqa: S314 - server-configured local file
@@ -113,7 +118,17 @@ def _read(path: Path, modified_ns: int) -> dict[str, dict]:
 
 
 def load_layer_styles(path: Path | None) -> dict[str, dict]:
-    """Return styles keyed by numeric layer/datatype, reloading edited files."""
+    """Read viewer styles from a KLayout layer-properties file.
+
+    Args:
+        path: Path to the file, or None to use default viewer styles.
+
+    Returns:
+        Styles keyed by numeric layer/datatype. Edited files are parsed again.
+
+    Raises:
+        ValueError: If the file cannot be read or contains invalid properties.
+    """
     if path is None:
         return {}
     path = path.expanduser().resolve()

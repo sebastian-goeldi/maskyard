@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextvars import ContextVar
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self, overload
+from typing import TYPE_CHECKING, Self, overload
 
 from sqlalchemy import LargeBinary, UniqueConstraint, or_
 from sqlalchemy import select as sa_select
@@ -77,6 +77,14 @@ class Cell(SQLModel, Transformable, table=True):
     )
 
     def bbox(self, layer: Layer | None = None) -> kdb.Box:
+        """Combine local geometry and instance bounds in cell coordinates.
+
+        Args:
+            layer: Limit the bounds to this layer, or use all layers by default.
+
+        Returns:
+            The enclosing box in database units.
+        """
         geometry = self.geometry
         if geometry is None:
             own_box = kdb.Box()
@@ -111,7 +119,18 @@ class Cell(SQLModel, Transformable, table=True):
         return self
 
     def get_port(self, name: str) -> CellPort:
+        """Query the current cell's saved ports by name.
 
+        Args:
+            name: Port name within the cell.
+
+        Returns:
+            The matching port.
+
+        Raises:
+            NoResultFound: If no port matches.
+            MultipleResultsFound: If more than one port matches.
+        """
         session = get_context_session(self)
 
         return session.execute(
@@ -119,6 +138,18 @@ class Cell(SQLModel, Transformable, table=True):
         ).scalar_one()
 
     def get_instance(self, name: str) -> Instance:
+        """Query the current cell's saved instances by name.
+
+        Args:
+            name: Instance name within the parent cell.
+
+        Returns:
+            The matching instance.
+
+        Raises:
+            NoResultFound: If no instance matches.
+            MultipleResultsFound: If more than one instance matches.
+        """
         session = get_context_session(self)
         return session.execute(
             select(Instance).where(
@@ -128,6 +159,7 @@ class Cell(SQLModel, Transformable, table=True):
 
     @property
     def dbu(self) -> float:
+        """Return the configured size of one database unit in micrometers."""
         return settings.dbu
 
     def insert(
@@ -141,6 +173,23 @@ class Cell(SQLModel, Transformable, table=True):
         nb: int = 0,
         trans: kdb.Trans | kdb.DCplxTrans | kdb.ICplxTrans | kdb.DTrans | None = None,
     ) -> Instance:
+        """Insert a child instance and commit it to the database.
+
+        Args:
+            cell: Cell to reference.
+            name: Optional name for the new instance.
+            a: Offset between placements along the first array axis in DBU.
+            b: Offset between placements along the second array axis in DBU.
+            na: Number of placements along the first array axis.
+            nb: Number of placements along the second array axis.
+            trans: Initial placement transform. Defaults to the identity.
+
+        Returns:
+            The committed instance.
+
+        Raises:
+            ValueError: If only one array axis has a positive count.
+        """
         session = get_context_session(self)
         session.add(self)
         session.add(cell)
@@ -160,7 +209,24 @@ class Cell(SQLModel, Transformable, table=True):
         nb: int = 0,
         trans: kdb.Trans | kdb.DCplxTrans | kdb.ICplxTrans | kdb.DTrans | None = None,
     ) -> Instance:
-        """Attach an instance without flushing or committing the session."""
+        """Attach an instance without flushing or committing the session.
+
+        Args:
+            cell: Cell to reference.
+            name: Optional name for the new instance.
+            a: First array step in DBU. Defaults to the zero vector.
+            b: Second array step in DBU. Defaults to the zero vector.
+            na: Number of placements along the first array axis.
+            nb: Number of placements along the second array axis.
+            trans: Initial placement, converted to integer DBU. Defaults to the
+                identity.
+
+        Returns:
+            The new instance attached to the parent cell.
+
+        Raises:
+            ValueError: If only one array axis has a positive count.
+        """
         if trans is None:
             trans_ = kdb.ICplxTrans()
         elif isinstance(trans, kdb.Trans):
@@ -199,6 +265,20 @@ class Cell(SQLModel, Transformable, table=True):
         datatype: int | None = None,
         name: str | None = None,
     ) -> kdb.LayerInfo:
+        """Look up a registered layer by number and datatype or by name.
+
+        Args:
+            layer: Numeric layer identifier. Supply it together with datatype.
+            datatype: Numeric datatype within the layer.
+            name: Layer name to look up or use as an additional filter.
+
+        Returns:
+            The matching layer as KLayout layer information.
+
+        Raises:
+            ValueError: If the identifiers are incomplete.
+            LookupError: If no matching layer is registered.
+        """
         session = get_context_session(self)
 
         if layer is not None and datatype is not None:
@@ -224,6 +304,7 @@ class Cell(SQLModel, Transformable, table=True):
         )
 
     def shapes(self, layer: kdb.LayerInfo) -> kdb.Shapes:
+        """Return the mutable collection of local shapes on a layer."""
         return self.geometry.kdb_cell.shapes(layer)
 
     def fill(
@@ -243,7 +324,26 @@ class Cell(SQLModel, Transformable, table=True):
         tile_border: tuple[int, int] | None = None,
         multi: bool = False,
     ) -> None:
-        """Tile ``fill_cell`` into this cell; all dimensions are in DBU."""
+        """Place the fill cell in eligible regions and commit the generated arrays.
+
+        All dimensions use integer database units. See fill_tiled for default areas,
+        pitches, and validation.
+
+        Args:
+            fill_cell: Cell to repeat in the eligible area.
+            fill_layers: Target layers and signed margins to include.
+            fill_regions: Explicit regions and signed margins to include.
+            exclude_layers: Target layers and signed margins to subtract.
+            exclude_regions: Explicit regions and signed margins to subtract.
+            n_threads: Number of KLayout tiling workers.
+            tile_size: Width and height of each processing tile.
+            row_step: Horizontal array pitch vector.
+            col_step: Vertical array pitch vector.
+            x_space: Extra spacing in the default horizontal pitch.
+            y_space: Extra spacing in the default vertical pitch.
+            tile_border: Minimum overlap around processing tiles.
+            multi: Whether to fill separate polygons using KLayout's multi-region fill.
+        """
         fill_tiled(
             self,
             fill_cell,
@@ -262,6 +362,16 @@ class Cell(SQLModel, Transformable, table=True):
         )
 
     def flatten(self, levels: int | None = None) -> Self:
+        """Copy geometry from the instance hierarchy into the local cell.
+
+        The traversal recurses through all levels and retains the instance references.
+
+        Args:
+            levels: Reserved depth limit. The current implementation always recurses.
+
+        Returns:
+            The cell with the copied geometry.
+        """
         cell_dict = {cell.name: cell for cell in self.called_cells()}
         cell_regions: dict[str, list[tuple[int, int, kdb.Region, kdb.Texts]]] = {}
 
@@ -279,12 +389,22 @@ class Cell(SQLModel, Transformable, table=True):
     def begin_shapes_rec(
         self, layer: Layer
     ) -> tuple[kdb.Layout, kdb.RecursiveShapeIterator]:
+        """Create an iterator over shapes on one layer throughout the hierarchy.
+
+        Args:
+            layer: Layer to scan, identified by its number and datatype.
+
+        Returns:
+            The temporary layout and an iterator over its recursive layer shapes. Keep
+            the layout alive while consuming the iterator.
+        """
         ly, c = self._get_kdb_cell()
         l_ = ly.layer(layer.layer, layer.datatype)
 
         return ly, c.begin_shapes_rec(l_)
 
     def _get_kdb_cell(self) -> tuple[kdb.Layout, kdb.Cell]:
+        """Reconstruct the referenced hierarchy in a temporary KLayout layout."""
         cells = self.called_cells()
         ly = kdb.Layout()
         ly.dbu = settings.dbu
@@ -312,9 +432,25 @@ class Cell(SQLModel, Transformable, table=True):
         self,
         name: str,
         cross_section: str | SymmetricCrossSection,
-        info: dict[str, Any] | None = None,
+        info: dict[str, object] | None = None,
         trans: kdb.Trans | kdb.DCplxTrans = kdb.Trans.R0,
     ) -> CellPort:
+        """Create a port on this cell and commit it.
+
+        Args:
+            name: Name assigned to the port. Also used for cross-section lookup when
+                cross_section is a string.
+            cross_section: Cross-section object, or a string to request a name lookup.
+            info: Optional metadata passed to the port constructor.
+            trans: Placement as an integer or complex micrometer transform.
+
+        Returns:
+            The committed port.
+
+        Raises:
+            NoResultFound: If the name lookup finds no cross section.
+            MultipleResultsFound: If the name lookup finds more than one cross section.
+        """
         if info is None:
             info = {}
         session = get_context_session(self)
@@ -340,7 +476,16 @@ class Cell(SQLModel, Transformable, table=True):
         *,
         trans: kdb.Trans | kdb.DCplxTrans = kdb.Trans.R0,
     ) -> CellPort:
-        """Attach a port without flushing or committing the session."""
+        """Attach a port without flushing or committing the session.
+
+        Args:
+            name: Name assigned to the port.
+            cross_section: Cross section that defines the port.
+            trans: Placement to copy into the new port.
+
+        Returns:
+            The new port attached to this cell.
+        """
         port = CellPort(
             name=name, cross_section=cross_section, transformation=trans.dup()
         )
@@ -348,6 +493,15 @@ class Cell(SQLModel, Transformable, table=True):
         return port
 
     def add_port(self, port: Port, name: str | None = None) -> CellPort:
+        """Copy a port and commit the copy in this cell's session.
+
+        Args:
+            port: Source port to copy.
+            name: Replacement name for the copy, if supplied.
+
+        Returns:
+            The saved copy.
+        """
         session = get_context_session(self)
         port = port.dup()
         if name is not None:
@@ -357,6 +511,7 @@ class Cell(SQLModel, Transformable, table=True):
         return port
 
     def called_cells(self) -> list[Cell]:
+        """Return each persisted descendant cell once, excluding this cell."""
         descendants = (
             select(Instance.cell_id)
             .where(Instance.parent_cell_id == self.id)
@@ -381,7 +536,15 @@ class Cell(SQLModel, Transformable, table=True):
     def instance_graph_edges(
         self,
     ) -> list[Row[Instance, str, str, bool, bool]]:
-        """Return instance rows in this cell's ancestor and descendant graph."""
+        """Query placements in this cell's ancestor and descendant graph.
+
+        Returns:
+            Rows containing an instance, its parent and child names, and flags
+            identifying whether the edge lies in the ancestor or descendant graph.
+
+        Raises:
+            ValueError: If the cell has no persisted ID.
+        """
         if self.id is None:
             raise ValueError(
                 "Cell must be persisted before querying its instance graph"
@@ -435,6 +598,13 @@ class Cell(SQLModel, Transformable, table=True):
     def write(
         self, path: Path | str, options: kdb.SaveLayoutOptions | None = None
     ) -> None:
+        """Export this cell and its referenced hierarchy to a layout file.
+
+        Args:
+            path: Destination path. KLayout infers the format from its extension.
+            options: Reserved save options. The current implementation uses KLayout
+                defaults.
+        """
         path = Path(path)
         ly = kdb.Layout()
         ly.dbu = settings.dbu
@@ -460,30 +630,47 @@ class Cell(SQLModel, Transformable, table=True):
 class CellInfo(SQLModel, table=True):
     id: int | None = Field(foreign_key="cell.id", primary_key=True)
     cell: Cell = Relationship(back_populates="info")
-    data: dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
+    data: dict[str, object] = Field(default_factory=dict, sa_type=JSON)
 
-    def __getitem__(self, name: str) -> Any:
+    def __getitem__(self, name: str) -> object:
+        """Return the metadata value stored under a key."""
         return self.data[name]
 
-    def __setitem__(self, name: str, value: Any) -> None:
+    def __setitem__(self, name: str, value: object) -> None:
+        """Store a metadata value under a key."""
         self.data[name] = value
 
 
 class CellSettings(SQLModel, table=True):
     id: int | None = Field(foreign_key="cell.id", primary_key=True)
     cell: Cell = Relationship(back_populates="settings")
-    data: dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
+    data: dict[str, object] = Field(default_factory=dict, sa_type=JSON)
 
-    def __getitem__(self, name: str) -> Any:
+    def __getitem__(self, name: str) -> object:
+        """Return the factory parameter stored under a key."""
         return self.data[name]
 
-    def __setitem__(self, name: str, value: Any) -> None:
+    def __setitem__(self, name: str, value: object) -> None:
+        """Store a factory parameter under a key."""
         self.data[name] = value
 
 
 def create_cell(
     name: str | None = None, pdk: Pdk | None = None, *, persist: bool = True
 ) -> Cell:
+    """Create an empty cell with geometry, metadata, and settings.
+
+    Args:
+        name: Explicit cell name, or None to consume the active PCell's automatic name.
+        pdk: Optional process design kit that owns the cell.
+        persist: Whether to add the cell to the current session for a later commit.
+
+    Returns:
+        The newly initialized cell.
+
+    Raises:
+        CellNameError: If a name is required and the automatic name is unavailable.
+    """
     if name is None:
         name = automatic_cell_name.get()
         if name is None:
@@ -509,6 +696,15 @@ def flatten_inst_into(
     cell_shapes: dict[str, list[tuple[int, int, kdb.Region, kdb.Texts]]],
     trans: kdb.ICplxTrans,
 ) -> None:
+    """Copy one referenced cell's regions and text and recurse into its children.
+
+    Args:
+        cell: Target cell receiving the copied geometry.
+        instance: Instance whose referenced cell supplies the geometry.
+        cell_dict: Cell lookup carried through the recursion.
+        cell_shapes: Cache of source regions and text grouped by layer and cell name.
+        trans: Accumulated transform applied in the target cell's coordinates.
+    """
     insert_cell = instance.cell
     insert_cell_name = insert_cell.name
     if insert_cell_name not in cell_shapes:
@@ -551,7 +747,17 @@ class FillOperator(kdb.TileOutputReceiver):
         column_step: kdb.Vector,
         multi: bool = False,
     ) -> None:
-        """Initialize the receiver."""
+        """Start collecting compact arrays in a temporary KLayout layout.
+
+        Args:
+            cell: Target cell that will receive the fill instances.
+            fill_cell: Repeated fill pattern.
+            fc_bbox: Pattern footprint in DBU.
+            origin: Grid origin for single-region fill.
+            row_step: First array pitch vector in DBU.
+            column_step: Second array pitch vector in DBU.
+            multi: Whether to use KLayout's multi-region fill.
+        """
         self.cell = cell
         self.fc = fill_cell
         self.fc_bbox = fc_bbox
@@ -575,7 +781,16 @@ class FillOperator(kdb.TileOutputReceiver):
         dbu: float,
         clip: bool,
     ) -> None:
-        """Called by the TilingProcessor."""
+        """Pack one processed tile into arrays in the temporary layout.
+
+        Args:
+            ix: Horizontal tile index supplied by KLayout.
+            iy: Vertical tile index supplied by KLayout.
+            tile: Tile bounds used to join arrays across tile edges.
+            region: Eligible fill area returned by the tiling script.
+            dbu: Database unit of the tiling processor.
+            clip: Clipping flag supplied by the tiling processor.
+        """
         if self.multi:
             self.temp_tc.fill_region_multi(
                 region=region,
@@ -661,13 +876,41 @@ def fill_tiled(
     tile_border: tuple[int, int] | None = None,
     multi: bool = False,
 ) -> None:
-    """Fill a Cell with unnamed instances of another Cell.
+    """Fill a cell with unnamed instances of another cell.
 
-    Sizes, distances, regions, and vectors use integer database units (DBU).
-    New cells are saved first; generated instances are committed as one batch.
+    Sizes, distances, regions, and vectors use integer database units. New cells are
+    saved first, then generated instances are committed as one batch.
+
+    Args:
+        c: Target cell whose regions or layers are filled.
+        fill_cell: Cell whose bounding box defines the fill footprint.
+        fill_layers: Layer and signed margin pairs to include.
+        fill_regions: Region and signed margin pairs to include. With no inclusion
+            inputs, the target bounds are used.
+        exclude_layers: Layer and signed margin pairs to subtract.
+        exclude_regions: Region and signed margin pairs to subtract.
+        n_threads: Positive worker count, or None to use the KLayout default.
+        tile_size: Processing tile width and height. Defaults to 100 nominal pitches per
+            axis.
+        row_step: First array pitch vector. Defaults to the pattern width plus x_space
+            along X.
+        col_step: Second array pitch vector. Defaults to the pattern height plus y_space
+            along Y.
+        x_space: Extra spacing in the default horizontal pitch.
+        y_space: Extra spacing in the default vertical pitch.
+        tile_border: Minimum tile border in X and Y. The border is expanded as needed
+            for the pattern and margins.
+        multi: Whether to use KLayout's multi-region fill to pack separate polygons.
+
+    Raises:
+        TypeError: If a DBU dimension or step vector has the wrong type.
+        ValueError: If the fill would create a cycle, the cells belong to different
+            sessions, or the fill area, footprint, pitch, tile dimensions, or worker
+            count is invalid.
     """
 
     def require_dbu(value: int, name: str) -> int:
+        """Require a plain integer for a dimension expressed in DBU."""
         if type(value) is not int:
             raise TypeError(f"{name} must be an integer number of DBU")
         return value

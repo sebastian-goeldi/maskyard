@@ -28,6 +28,18 @@ class Layout(TypeDecorator[kdb.Layout]):
     def process_bind_param(
         self, value: kdb.Layout | None, dialect: Dialect
     ) -> bytes | None:
+        """Serialize the selected TOP cell as OASIS bytes.
+
+        Args:
+            value: Layout to serialize, or None to store NULL.
+            dialect: SQLAlchemy dialect for the write.
+
+        Returns:
+            The encoded layout, or None for a NULL value.
+
+        Raises:
+            ValueError: If the layout DBU differs from the database DBU.
+        """
         if value is None:
             return None
         cell = value.cell("TOP")
@@ -57,6 +69,7 @@ class Layout(TypeDecorator[kdb.Layout]):
     def process_result_value(
         self, value: bytes | None, dialect: Dialect
     ) -> kdb.Layout | None:
+        """Decode OASIS bytes or create an empty TOP layout for NULL."""
         layout = kdb.Layout()
         if value is None:
             layout.create_cell("TOP")
@@ -66,6 +79,7 @@ class Layout(TypeDecorator[kdb.Layout]):
 
 
 def _create_layout_for_shapes() -> kdb.Layout:
+    """Create an empty TOP cell at the configured database unit."""
     ly = kdb.Layout()
     ly.dbu = settings.dbu
     ly.create_cell("TOP")

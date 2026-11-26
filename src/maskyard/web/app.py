@@ -1,6 +1,7 @@
 """FastAPI entry point for the MaskYard web interface."""
 
 from pathlib import Path
+from typing import TypedDict
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
@@ -16,7 +17,32 @@ from maskyard.models.factory import PCellFactory
 from maskyard.models.instance import Instance
 
 from .layer_styles import load_layer_styles
-from .render_cache import box_data, cache_dir, get_cell_cache, load_cache_index
+from .layout import Placement
+from .render_cache import (
+    CachedLayer,
+    CacheIndex,
+    CellCache,
+    box_data,
+    cache_dir,
+    get_cell_cache,
+    load_cache_index,
+)
+
+
+class _InstancePlacement(TypedDict):
+    cell: str
+    transform: Placement
+    a: list[int]
+    b: list[int]
+    na: int
+    nb: int
+
+
+class _ManifestCell(TypedDict):
+    bbox: list[int] | None
+    layers: list[CachedLayer]
+    instances: list[_InstancePlacement]
+
 
 _WEB_DIR = Path(__file__).resolve().parent
 
@@ -32,7 +58,14 @@ _templates = Jinja2Templates(directory=str(_WEB_DIR / "templates"))
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
-    """Render the home page."""
+    """Render the cell catalog grouped by PCell factory.
+
+    Args:
+        request: Incoming request used to render the template and generate links.
+
+    Returns:
+        The HTML response for the catalog.
+    """
     with session_context() as session:
         rows = session.exec(
             select(Cell, PCellFactory)
@@ -59,7 +92,18 @@ def index(request: Request) -> HTMLResponse:
 
 @app.get("/cells/{cell_id}", response_class=HTMLResponse, name="cell_page")
 def cell_page(request: Request, cell_id: int) -> HTMLResponse:
-    """Show a cell's instance graph, info, and settings."""
+    """Render a cell's metadata, settings, and instance graph.
+
+    Args:
+        request: Incoming request used by the HTML template.
+        cell_id: Database ID of the cell to display.
+
+    Returns:
+        The HTML response for the cell detail page.
+
+    Raises:
+        HTTPException: If the cell does not exist.
+    """
     with session_context() as session:
         cell = session.get(Cell, cell_id)
         if cell is None:
@@ -156,7 +200,8 @@ def cell_page(request: Request, cell_id: int) -> HTMLResponse:
     )
 
 
-def _render_index() -> dict:
+def _render_index() -> CacheIndex:
+    """Read the render cache index and report unavailable cache data as HTTP 503."""
     try:
         return load_cache_index()
     except (FileNotFoundError, ValueError) as exc:
@@ -165,7 +210,19 @@ def _render_index() -> dict:
 
 @app.get("/cells/{cell_id}/layout", name="cell_layout_manifest")
 def cell_layout_manifest(cell_id: int) -> dict:
-    """Return hierarchy metadata without generating geometry for descendants."""
+    """Return bounds, placements, styles, and available cached layer metadata.
+
+    The route reads the hierarchy without building descendant geometry.
+
+    Args:
+        cell_id: Database ID of the root cell.
+
+    Returns:
+        Viewer metadata keyed by cell ID.
+
+    Raises:
+        HTTPException: If the cell is missing or viewer configuration is unavailable.
+    """
     index = _render_index()
     try:
         layer_styles = load_layer_styles(settings.layout_layer_properties)
@@ -178,14 +235,14 @@ def cell_layout_manifest(cell_id: int) -> dict:
         models = {model.id: model for model in [cell, *cell.called_cells()]}
         ids = list(models)
         bounds = {id_: box_data(model.bbox()) for id_, model in models.items()}
-        cells = {
-            str(id_): {
-                "bbox": bounds[id_],
-                "layers": index["cells"].get(str(id_), {}).get("layers", []),
+        cells: dict[str, _ManifestCell] = {}
+        for id_, bbox in bounds.items():
+            cached = index["cells"].get(str(id_))
+            cells[str(id_)] = {
+                "bbox": bbox,
+                "layers": cached.get("layers", []) if cached is not None else [],
                 "instances": [],
             }
-            for id_, model in models.items()
-        }
         # Keep the query below SQLite's older 999-variable limit.
         for offset in range(0, len(ids), 500):
             for instance in session.exec(
@@ -221,9 +278,21 @@ def cell_layout_manifest(cell_id: int) -> dict:
         }
 
 
-@app.get("/cells/{cell_id}/layout/geometry", name="cell_layout_geometry")
-def cell_layout_geometry(cell_id: int) -> dict:
-    """Generate and return one cell's binary chunk manifest on demand."""
+@app.get(
+    "/cells/{cell_id}/layout/geometry", name="cell_layout_geometry", response_model=dict
+)
+def cell_layout_geometry(cell_id: int) -> CellCache:
+    """Return one cell's geometry chunk manifest, building it on demand.
+
+    Args:
+        cell_id: Database ID of the cell whose local geometry is requested.
+
+    Returns:
+        The available layers and their binary chunk descriptors.
+
+    Raises:
+        HTTPException: If the cell does not exist.
+    """
     try:
         return get_cell_cache(cell_id)
     except LookupError as exc:
@@ -232,7 +301,19 @@ def cell_layout_geometry(cell_id: int) -> dict:
 
 @app.get("/cells/{cell_id}/layout/chunks/{layer_number}/{chunk_number}")
 def cell_layout_chunk(cell_id: int, layer_number: int, chunk_number: int) -> Response:
-    """Serve one stored binary shape chunk."""
+    """Serve a compressed geometry chunk from the render cache.
+
+    Args:
+        cell_id: Database ID of the cell owning the chunk.
+        layer_number: Zero-based index into the cell's cached layers.
+        chunk_number: Zero-based index into the layer's cached chunks.
+
+    Returns:
+        The binary chunk response.
+
+    Raises:
+        HTTPException: If the cell, layer, chunk, or chunk file is missing.
+    """
     try:
         layers = get_cell_cache(cell_id)["layers"]
     except LookupError as exc:

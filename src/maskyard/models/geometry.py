@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from functools import cached_property
 from typing import TYPE_CHECKING
 
 from numpy import isclose
@@ -82,6 +81,7 @@ class Geometry(SQLModel, table=True):
         default_factory=_create_layout_for_shapes, sa_type=Layout
     )
 
-    @cached_property
+    @property
     def kdb_cell(self) -> kdb.Cell:
+        """Return the top cell from the current layout."""
         return self.layout.cell("TOP")

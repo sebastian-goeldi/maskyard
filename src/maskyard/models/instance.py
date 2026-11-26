@@ -11,6 +11,7 @@ from ..engine import get_context_session
 from .info import InfoBase
 from .port import CellPort, InstancePort, Port
 from .trans import InstanceTrans
+from .transformable import Transformable
 from .vector import Vector
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from .layer import Layer
 
 
-class Instance(SQLModel, table=True):
+class Instance(SQLModel, Transformable, table=True):
     model_config = SQLModelConfig(arbitrary_types_allowed=True)
 
     id: int | None = Field(default=None, primary_key=True)
@@ -61,6 +62,28 @@ class Instance(SQLModel, table=True):
             + cell_bb.transformed(kdb.Trans(aa + bb))
         )
 
+    def transform(self, trans: kdb.Trans | kdb.DCplxTrans) -> Self:
+        """Transform the placement and array pitch in parent coordinates.
+
+        Args:
+            trans: An integer DBU transform or a complex transform in micrometers.
+
+        Returns:
+            The transformed instance.
+        """
+        if isinstance(trans, kdb.Trans):
+            self.cplx_trans = kdb.ICplxTrans(trans) * self.cplx_trans
+            if self.na and self.nb:
+                self.a = trans * self.a
+                self.b = trans * self.b
+        else:
+            dbu = settings.dbu
+            self.dcplx_trans = trans * self.dcplx_trans
+            if self.na and self.nb:
+                self.a = (trans * self.a.to_dtype(dbu)).to_itype(dbu)
+                self.b = (trans * self.b.to_dtype(dbu)).to_itype(dbu)
+        return self
+
     def get_port(
         self, name: str, ia: int | None = None, ib: int | None = None
     ) -> InstancePort:
@@ -91,6 +114,22 @@ class Instance(SQLModel, table=True):
     @trans.setter
     def trans(self, value: kdb.Trans) -> None:
         self.cplx_trans = kdb.ICplxTrans(value)
+
+    @property
+    def mirrored(self) -> bool:
+        """Return whether the instance placement includes a reflection."""
+        return self.cplx_trans.is_mirror()
+
+    @mirrored.setter
+    def mirrored(self, value: bool) -> None:
+        """Set the reflection flag at the current placement.
+
+        Args:
+            value: Whether the placement includes a reflection.
+        """
+        trans = self.cplx_trans.dup()
+        trans.mirror = value
+        self.cplx_trans = trans
 
     @property
     def dcplx_trans(self) -> kdb.DCplxTrans:

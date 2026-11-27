@@ -1,4 +1,4 @@
-"""Minimal web application for Maskyard."""
+"""Minimal web application for MaskYard."""
 
 from .app import app
 

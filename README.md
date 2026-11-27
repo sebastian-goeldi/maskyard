@@ -1,12 +1,12 @@
-# Maskyard
+# MaskYard
 
 **English** · [简体中文](README.zh-CN.md)
 
 <p align="center">
-  <img src="docs/assets/logo/logo.svg" alt="Maskyard logo" width="420">
+  <img src="logo.png" alt="Crane lifting a chip" width="420">
 </p>
 
-Build, store, and inspect chip layouts with Python and KLayout. Maskyard stores
+Build, store, and inspect chip layouts with Python and KLayout. MaskYard stores
 cell geometry and hierarchy in a database for reuse and inspection.
 
 ## Quickstart
@@ -51,24 +51,12 @@ uv run --locked python -m http.server 8000 --bind 127.0.0.1 --directory docs/sit
 To publish manually with your Git credentials, use `just docs-deploy-dev` from
 `main` or `just docs-deploy-release 0.0.2` from the corresponding tagged checkout.
 
-## Acknowledgments
-
-Thanks to Frank Böttinger of [modulstyle.com](https://modulstyle.com/) for
-designing the Maskyard logo.
-
 ## License
 
-Maskyard is free software: you can redistribute it and/or modify it under
+MaskYard is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option) any
 later version. See [LICENSE](LICENSE) for the full text.
-
-All assets in [`docs/assets/logo/`](docs/assets/logo), including the logo and
-favicon, are © 2026 Sebastian Goeldi. All rights reserved. The
-[logo license](docs/assets/logo/LICENSE) governs these assets separately from
-the software’s AGPL. Forks used solely to contribute changes upstream may keep
-these assets. Independent forks must remove the assets and references to them
-unless Sebastian Goeldi gives written permission.
 
 Bundled JavaScript libraries retain their respective licenses; their copyright
 and license notices are in `src/maskyard/web/static/*_LICENSE.txt`. Other

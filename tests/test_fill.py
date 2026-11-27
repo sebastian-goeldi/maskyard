@@ -1,4 +1,4 @@
-"""Tiled fill through Maskyard cells and direct KLayout geometry."""
+"""Tiled fill through MaskYard cells and direct KLayout geometry."""
 
 import pytest
 from sqlalchemy import event

@@ -1,4 +1,4 @@
-"""FastAPI entry point for the Maskyard web interface."""
+"""FastAPI entry point for the MaskYard web interface."""
 
 from pathlib import Path
 from typing import TypedDict
@@ -46,7 +46,7 @@ class _ManifestCell(TypedDict):
 
 _WEB_DIR = Path(__file__).resolve().parent
 
-app = FastAPI(title="Maskyard")
+app = FastAPI(title="MaskYard")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.mount(
     "/static",

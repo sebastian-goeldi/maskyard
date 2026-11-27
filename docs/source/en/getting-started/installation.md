@@ -1,6 +1,6 @@
 # Installation
 
-Maskyard requires Python 3.14 or later. From a checkout of this repository, use [uv](https://docs.astral.sh/uv/) to install the project and its locked dependencies.
+MaskYard requires Python 3.14 or later. From a checkout of this repository, use [uv](https://docs.astral.sh/uv/) to install the project and its locked dependencies.
 
 ```sh
 uv sync --locked

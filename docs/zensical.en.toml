@@ -1,9 +1,8 @@
 [project]
-site_name = "Maskyard"
+site_name = "MaskYard"
 strict = true
 docs_dir = "source-built/en"
 site_dir = "site/en"
-extra_css = ["assets/stylesheets/branding.css"]
 nav = [
   { "Home" = "index.md" },
   { "Getting Started" = [
@@ -29,8 +28,6 @@ nav = [
 custom_dir = "overrides"
 font = false
 language = "en"
-logo = "assets/logo/logo.svg"
-favicon = "assets/logo/icon.svg"
 
 [[project.theme.palette]]
 media = "(prefers-color-scheme)"

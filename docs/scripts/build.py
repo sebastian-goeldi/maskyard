@@ -74,6 +74,7 @@ def build(version: str | None = None, branch: str = VERSION_BRANCH) -> None:
             shutil.rmtree(staged)
         shutil.copytree(SOURCE / locale, staged)
         shutil.copytree(DOCS / "assets", staged / "assets")
+        shutil.copy2(ROOT / "logo.png", staged / "assets" / "logo.png")
 
         for path in staged.rglob("*.md"):
             page = path.relative_to(staged)
@@ -87,7 +88,7 @@ def build(version: str | None = None, branch: str = VERSION_BRANCH) -> None:
             ).replace(os.sep, "/")
             content = path.read_text(encoding="utf-8")
             content = content.replace(
-                'src="../../assets/logo/logo.svg"', 'src="assets/logo/logo.svg"'
+                'src="../../../logo.png"', 'src="assets/logo.png"'
             )
             content = content.replace("](../../../assets/", "](../assets/")
             if locale == "zh" and page == Path("reference/index.md"):

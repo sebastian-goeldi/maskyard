@@ -1,6 +1,6 @@
 # 安装
 
-Maskyard 需要 Python 3.14 或更高版本。在本仓库的本地检出目录中，使用 [uv](https://docs.astral.sh/uv/) 安装项目及锁定的依赖。
+MaskYard 需要 Python 3.14 或更高版本。在本仓库的本地检出目录中，使用 [uv](https://docs.astral.sh/uv/) 安装项目及锁定的依赖。
 
 ```sh
 uv sync --locked

@@ -1,6 +1,6 @@
 # API Reference
 
-Python objects used in the Maskyard guides. See the [core concepts](../concepts/layout.md) for an introduction.
+Python objects used in the MaskYard guides. See the [core concepts](../concepts/layout.md) for an introduction.
 
 ::: maskyard.models.cell.create_cell
 

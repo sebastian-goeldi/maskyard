@@ -1,9 +1,8 @@
 [project]
-site_name = "Maskyard"
+site_name = "MaskYard"
 strict = true
 docs_dir = "source-built/zh"
 site_dir = "site/zh"
-extra_css = ["assets/stylesheets/branding.css"]
 nav = [
   { "首页" = "index.md" },
   { "入门" = [
@@ -29,8 +28,6 @@ nav = [
 custom_dir = "overrides"
 font = false
 language = "zh"
-logo = "assets/logo/logo.svg"
-favicon = "assets/logo/icon.svg"
 
 [[project.theme.palette]]
 media = "(prefers-color-scheme)"

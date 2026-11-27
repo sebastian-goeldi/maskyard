@@ -13,7 +13,7 @@ uv run --locked --extra web uvicorn maskyard.web:app
 
 The script writes `chip.gds` and `chip.csv` to the scratch directory. Open <http://127.0.0.1:8000/>, select the saved cell from the `chip` factory, and use **Fit layout** to see the whole array.
 
-![MaskYard layout viewer showing the 30-MZI chip](../../../assets/mzi-viewer.png)
+![Maskyard layout viewer showing the 30-MZI chip](../../../assets/mzi-viewer.png)
 
 ## How the script adds fill { #adding-fill }
 

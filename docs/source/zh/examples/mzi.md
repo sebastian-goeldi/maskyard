@@ -13,7 +13,7 @@ uv run --locked --extra web uvicorn maskyard.web:app
 
 脚本将 `chip.gds` 和 `chip.csv` 写入临时目录。打开 <http://127.0.0.1:8000/>，选择 `chip` 工厂生成的单元，然后点击 **Fit layout**，即可查看完整阵列。
 
-![MaskYard 版图查看器显示包含 30 个 MZI 的芯片](../../../assets/mzi-viewer.png)
+![Maskyard 版图查看器显示包含 30 个 MZI 的芯片](../../../assets/mzi-viewer.png)
 
 ## 脚本如何添加填充 { #adding-fill }
 

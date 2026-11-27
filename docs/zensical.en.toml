@@ -1,5 +1,5 @@
 [project]
-site_name = "MaskYard"
+site_name = "Maskyard"
 strict = true
 docs_dir = "source-built/en"
 site_dir = "site/en"

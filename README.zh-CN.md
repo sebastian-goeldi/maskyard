@@ -1,12 +1,12 @@
-# MaskYard
+# Maskyard
 
 [English](README.md) · **简体中文**
 
 <p align="center">
-  <img src="docs/assets/logo/logo.svg" alt="起重机吊起一枚芯片" width="420">
+  <img src="docs/assets/logo/logo.svg" alt="Maskyard 标志" width="420">
 </p>
 
-使用 Python 和 KLayout 创建、存储和查看芯片版图。MaskYard 将单元的几何图形和层次结构保存到数据库中，便于复用和查看。
+使用 Python 和 KLayout 创建、存储和查看芯片版图。Maskyard 将单元的几何图形和层次结构保存到数据库中，便于复用和查看。
 
 ## 快速上手
 
@@ -42,8 +42,14 @@ uv run --locked python -m http.server 8000 --bind 127.0.0.1 --directory docs/sit
 
 翻译流程见[文档贡献指南](docs/CONTRIBUTING.md)。
 
+## 致谢
+
+感谢 [modulstyle.com](https://modulstyle.com/) 的 Frank Böttinger 为 Maskyard 设计标志。
+
 ## 许可证
 
-MaskYard 是自由软件。你可以依据自由软件基金会发布的 GNU Affero 通用公共许可证第 3 版（或自行选择任何后续版本）的条款重新分发和修改本软件。完整条款见 [LICENSE](LICENSE)。
+Maskyard 是自由软件。你可以依据自由软件基金会发布的 GNU Affero 通用公共许可证第 3 版（或自行选择任何后续版本）的条款重新分发和修改本软件。完整条款见 [LICENSE](LICENSE)。
+
+[Maskyard SVG 标志](docs/assets/logo/logo.svg)的版权归 Sebastian Goeldi 所有（© 2026），保留所有权利。标志适用单独的[标志许可证](docs/assets/logo/LICENSE)。仅用于向上游项目贡献改动的派生仓库可以保留该标志。独立维护的派生项目必须移除该标志及其引用，除非获得 Sebastian Goeldi 的书面许可。
 
 随项目分发的 JavaScript 库继续适用各自的许可证。版权和许可声明见 `src/maskyard/web/static/*_LICENSE.txt`。其他第三方文件也保留各自的声明。

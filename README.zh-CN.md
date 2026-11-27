@@ -3,7 +3,7 @@
 [English](README.md) · **简体中文**
 
 <p align="center">
-  <img src="docs/assets/logo.svg" alt="起重机吊起一枚芯片" width="420">
+  <img src="docs/assets/logo/logo.svg" alt="起重机吊起一枚芯片" width="420">
 </p>
 
 使用 Python 和 KLayout 创建、存储和查看芯片版图。MaskYard 将单元的几何图形和层次结构保存到数据库中，便于复用和查看。

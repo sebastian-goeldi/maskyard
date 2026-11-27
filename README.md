@@ -3,7 +3,7 @@
 **English** · [简体中文](README.zh-CN.md)
 
 <p align="center">
-  <img src="docs/assets/logo.svg" alt="Maskyard logo" width="420">
+  <img src="docs/assets/logo/logo.svg" alt="Maskyard logo" width="420">
 </p>
 
 Build, store, and inspect chip layouts with Python and KLayout. MaskYard stores

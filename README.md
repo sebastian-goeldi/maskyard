@@ -63,11 +63,12 @@ the terms of the GNU Affero General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option) any
 later version. See [LICENSE](LICENSE) for the full text.
 
-The [Maskyard SVG logo](docs/assets/logo/logo.svg) is © 2026 Sebastian Goeldi.
-All rights reserved. The [logo license](docs/assets/logo/LICENSE) governs the
-logo separately from the software’s AGPL. Forks used solely to contribute
-changes upstream may keep the logo. Independent forks must remove the logo and
-its references unless Sebastian Goeldi gives written permission.
+All assets in [`docs/assets/logo/`](docs/assets/logo), including the logo and
+favicon, are © 2026 Sebastian Goeldi. All rights reserved. The
+[logo license](docs/assets/logo/LICENSE) governs these assets separately from
+the software’s AGPL. Forks used solely to contribute changes upstream may keep
+these assets. Independent forks must remove the assets and references to them
+unless Sebastian Goeldi gives written permission.
 
 Bundled JavaScript libraries retain their respective licenses; their copyright
 and license notices are in `src/maskyard/web/static/*_LICENSE.txt`. Other

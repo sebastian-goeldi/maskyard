@@ -1,6 +1,6 @@
 # Configure the database
 
-MaskYard defaults to `sqlite:///maskyard.db` in the current directory. Set `MASKYARD_DATABASE_URL` before importing MaskYard or starting the viewer. Use an absolute SQLite URL to share the same file across processes started from different directories.
+Maskyard defaults to `sqlite:///maskyard.db` in the current directory. Set `MASKYARD_DATABASE_URL` before importing Maskyard or starting the viewer. Use an absolute SQLite URL to share the same file across processes started from different directories.
 
 ```sh
 export MASKYARD_DATABASE_URL="sqlite:////absolute/path/to/layout.db"

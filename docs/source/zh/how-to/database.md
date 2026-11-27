@@ -1,6 +1,6 @@
 # 配置数据库
 
-MaskYard 默认使用当前目录中的 `sqlite:///maskyard.db`。请在导入 MaskYard 或启动查看器之前设置 `MASKYARD_DATABASE_URL`。如果多个进程从不同目录启动，请使用绝对 SQLite URL，让它们访问同一个文件。
+Maskyard 默认使用当前目录中的 `sqlite:///maskyard.db`。请在导入 Maskyard 或启动查看器之前设置 `MASKYARD_DATABASE_URL`。如果多个进程从不同目录启动，请使用绝对 SQLite URL，让它们访问同一个文件。
 
 ```sh
 export MASKYARD_DATABASE_URL="sqlite:////absolute/path/to/layout.db"

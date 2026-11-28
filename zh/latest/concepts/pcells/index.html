@@ -20,12 +20,12 @@
       
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/logo/icon.svg">
       <meta name="generator" content="zensical-0.1.3">
     
     
       
-        <title>PDK 与参数化单元 - MaskYard</title>
+        <title>PDK 与参数化单元 - Maskyard</title>
       
     
     
@@ -50,6 +50,8 @@
     
       
     
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/branding.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -93,10 +95,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="页眉">
-    <a href="../.." title="MaskYard" class="md-header__button md-logo" aria-label="MaskYard" data-md-component="logo">
+    <a href="../.." title="Maskyard" class="md-header__button md-logo" aria-label="Maskyard" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+  <img src="../../assets/logo/logo.svg" alt="Maskyard">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -108,7 +109,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            MaskYard
+            Maskyard
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -173,7 +174,7 @@
           
             <li class="md-select__item">
               
-                <a href="..&#x2f;..&#x2f;..&#x2f;..&#x2f;en&#x2f;0.0.1&#x2f;concepts&#x2f;pcells&#x2f;" class="md-select__link" lang="en" hreflang="en" data-locale-link>English</a>
+                <a href="..&#x2f;..&#x2f;..&#x2f;..&#x2f;en&#x2f;0.0.2&#x2f;concepts&#x2f;pcells&#x2f;" class="md-select__link" lang="en" hreflang="en" data-locale-link>English</a>
               
             </li>
           
@@ -232,13 +233,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="MaskYard" class="md-nav__button md-logo" aria-label="MaskYard" data-md-component="logo">
+    <a href="../.." title="Maskyard" class="md-nav__button md-logo" aria-label="Maskyard" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+  <img src="../../assets/logo/logo.svg" alt="Maskyard">
 
     </a>
-    MaskYard
+    Maskyard
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -838,8 +838,8 @@
 
 
 <h1 id="pdk">PDK 与参数化单元</h1>
-<p>使用 <code>get_or_create_pdk(name)</code> 获取指定名称的工艺设计套件（PDK），并用 <code>pdk.pcell()</code> 将 Python 函数注册为参数化单元（PCell）的工厂函数。工厂函数接收版图参数并返回一个 <code>Cell</code>。在函数内调用 <code>pdk.create_cell()</code> 即可使用自动分配的名称。</p>
-<p>每个 PCell 工厂都有持久化的标识。规范化后相同的参数可以跨会话复用已保存的单元。同一主机上的多个进程通过生成锁协调相同的调用。即使不同主机上的进程都计算了同一结果，数据库的唯一性约束也会防止写入重复的缓存记录。</p>
+<p>使用 <code>get_or_create_pdk(name)</code> 获取指定名称的工艺设计套件（PDK），并用 <code>pdk.pcell()</code> 将 Python 函数注册为参数化单元（PCell）。该函数接收版图参数并返回一个 <code>Cell</code>。在函数内调用 <code>pdk.create_cell()</code> 即可使用自动分配的名称。</p>
+<p>每个 PCell都有持久化的标识。规范化后相同的参数可以跨会话复用已保存的单元。同一主机上的多个进程通过生成锁协调相同的调用。即使不同主机上的进程都计算了同一结果，数据库的唯一性约束也会防止写入重复的缓存记录。</p>
 <p>PCell 调用默认同步执行。如需通过专用写入线程保存，请参阅<a href="../../how-to/batched-writes/">批量写入</a>。如需提交远程任务，请参阅 <a href="../../how-to/ray/">Ray 指南</a>。</p>
 
 

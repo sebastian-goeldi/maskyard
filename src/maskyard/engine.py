@@ -16,6 +16,32 @@ from . import models  # noqa: F401
 from .config import settings
 from .models.config import CURRENT_SCHEMA_VERSION
 
+
+@event.listens_for(SASession, "before_flush", named=True)
+def _cascade_cell_deletes(session: SASession, **_event: object) -> None:
+    """Delete ancestors of removed Maskyard cells using persisted placements.
+
+    Flush placement edits before marking cells for deletion so those edits are
+    visible to the ancestor query.
+    """
+    deleted = session.deleted
+    if not deleted:
+        return
+
+    from .models.cell import Cell, ancestor_cells
+
+    cells = [obj for obj in deleted if isinstance(obj, Cell)]
+    if not cells:
+        return
+
+    deleted_ids = {cell.id for cell in cells}
+    for cell in cells:
+        for ancestor in ancestor_cells(session, cell):
+            if ancestor.id not in deleted_ids:
+                session.delete(ancestor)
+                deleted_ids.add(ancestor.id)
+
+
 engine = create_engine(settings.database_url)
 DEFAULT_DBU = 0.001
 _schema_lock = Lock()

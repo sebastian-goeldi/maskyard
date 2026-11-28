@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from sqlalchemy.engine import Row
+    from sqlalchemy.orm import Session
 
     from .pcell import PCell
     from .pdk import Pdk
@@ -45,10 +46,10 @@ class Cell(SQLModel, Transformable, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
 
-    geometry: Geometry = Relationship(back_populates="cell")
+    geometry: Geometry = Relationship(back_populates="cell", cascade_delete=True)
 
-    info: CellInfo = Relationship(back_populates="cell")
-    settings: CellSettings = Relationship(back_populates="cell")
+    info: CellInfo = Relationship(back_populates="cell", cascade_delete=True)
+    settings: CellSettings = Relationship(back_populates="cell", cascade_delete=True)
 
     pcell_id: int | None = Field(
         default=None, foreign_key="pcell.id", ondelete="CASCADE"
@@ -66,7 +67,6 @@ class Cell(SQLModel, Transformable, table=True):
             back_populates="parent_cell",
             foreign_keys="[Instance.parent_cell_id]",
             cascade="all, delete-orphan",
-            passive_deletes=True,
         )
     )
     ports: list[CellPort] = Relationship(
@@ -511,26 +511,7 @@ class Cell(SQLModel, Transformable, table=True):
 
     def called_cells(self) -> list[Cell]:
         """Return each persisted descendant cell once, excluding this cell."""
-        descendants = (
-            select(Instance.cell_id)
-            .where(Instance.parent_cell_id == self.id)
-            .cte("descendants", recursive=True)
-        )
-
-        descendants = descendants.union(
-            select(Instance.cell_id).join(
-                descendants, col(Instance.parent_cell_id) == descendants.c.cell_id
-            )
-        )
-        session = get_context_session(self)
-
-        return list(
-            session.scalars(
-                select(Cell)
-                .join(descendants, col(Cell.id) == descendants.c.cell_id)
-                .where(Cell.id != self.id)
-            ).all()
-        )
+        return descendant_cells(get_context_session(self), self)
 
     def instance_graph_edges(
         self,
@@ -652,6 +633,48 @@ class CellSettings(SQLModel, table=True):
     def __setitem__(self, name: str, value: JSONSerializable) -> None:
         """Store a PCell parameter under a key."""
         self.data[name] = value
+
+
+def ancestor_cells(session: Session, cell: Cell) -> list[Cell]:
+    """Return each persisted cell that directly or indirectly instantiates `cell`."""
+    cell_id = cell.id
+    ancestors = (
+        select(col(Cell.id).label("cell_id"))
+        .where(Cell.id == cell_id)
+        .cte("ancestors", recursive=True)
+    )
+    ancestors = ancestors.union(
+        select(Instance.parent_cell_id)
+        .join(ancestors, col(Instance.cell_id) == ancestors.c.cell_id)
+        .where(col(Instance.parent_cell_id).is_not(None))
+    )
+    statement = (
+        select(Cell)
+        .join(ancestors, col(Cell.id) == ancestors.c.cell_id)
+        .where(Cell.id != cell_id)
+    )
+    return list(session.scalars(statement).all())
+
+
+def descendant_cells(session: Session, cell: Cell) -> list[Cell]:
+    """Return each persisted cell that `cell` directly or indirectly instantiates."""
+    cell_id = cell.id
+    descendants = (
+        select(col(Cell.id).label("cell_id"))
+        .where(Cell.id == cell_id)
+        .cte("descendants", recursive=True)
+    )
+    descendants = descendants.union(
+        select(Instance.cell_id)
+        .join(descendants, col(Instance.parent_cell_id) == descendants.c.cell_id)
+        .where(col(Instance.cell_id).is_not(None))
+    )
+    statement = (
+        select(Cell)
+        .join(descendants, col(Cell.id) == descendants.c.cell_id)
+        .where(Cell.id != cell_id)
+    )
+    return list(session.scalars(statement).all())
 
 
 def create_cell(

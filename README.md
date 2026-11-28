@@ -9,6 +9,10 @@
 Build, store, and inspect chip layouts with Python and KLayout. Maskyard stores
 cell geometry and hierarchy in a database for reuse and inspection.
 
+> Maskyard will remain experimental until at least version 0.1. During this
+> period, the API may change at any time, including in ways that break existing
+> code.
+
 ## Quickstart
 
 From a checkout with [uv](https://docs.astral.sh/uv/) installed, run the example

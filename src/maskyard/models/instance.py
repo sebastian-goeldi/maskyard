@@ -32,12 +32,12 @@ class Instance(SQLModel, Transformable, table=True):
     na: int = 0
     nb: int = 0
 
-    info: InstanceInfo = Relationship(back_populates="instance")
+    info: InstanceInfo = Relationship(back_populates="instance", cascade_delete=True)
 
-    cell_id: int | None = Field(
+    cell_id: int = Field(
         default=None, foreign_key="cell.id", ondelete="CASCADE", index=True
     )
-    parent_cell_id: int | None = Field(
+    parent_cell_id: int = Field(
         default=None, foreign_key="cell.id", ondelete="CASCADE", index=True
     )
 

@@ -5,8 +5,8 @@ from typing import Literal, TypedDict
 
 import klayout.db as kdb
 
-from maskyard.config import settings
-from maskyard.models.cell import Cell
+from ..config import settings
+from ..models.cell import Cell
 
 
 class _PolygonData(TypedDict):

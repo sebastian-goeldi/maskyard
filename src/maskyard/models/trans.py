@@ -70,9 +70,7 @@ class InstanceTrans(TypeDecorator[kdb.ICplxTrans]):
     def process_result_value(
         self, value: bytes | None, dialect: Dialect
     ) -> kdb.ICplxTrans | None:
-        """Decode the placement and restore its 64-bit displacement."""
+        """Decode a complex integer placement from database storage."""
         if value is None:
             return None
-        trans = kdb.ICplxTrans.from_bytes(value)
-        trans.disp = kdb.Vector(*struct.unpack_from("<qq", value, 2))
-        return trans
+        return kdb.ICplxTrans.from_bytes(value)

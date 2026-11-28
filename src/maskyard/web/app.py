@@ -10,12 +10,11 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import col, select
 from starlette.middleware.gzip import GZipMiddleware
 
-from maskyard.config import settings
-from maskyard.engine import session_context
-from maskyard.models.cell import Cell, CellInfo, CellSettings
-from maskyard.models.factory import PCellFactory
-from maskyard.models.instance import Instance
-
+from ..config import settings
+from ..engine import session_context
+from ..models.cell import Cell, CellInfo, CellSettings
+from ..models.instance import Instance
+from ..models.pcell import PCell
 from .layer_styles import load_layer_styles
 from .layout import Placement
 from .render_cache import (
@@ -58,7 +57,7 @@ _templates = Jinja2Templates(directory=str(_WEB_DIR / "templates"))
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
-    """Render the cell catalog grouped by PCell factory.
+    """Render the cell catalog grouped by PCell.
 
     Args:
         request: Incoming request used to render the template and generate links.
@@ -68,22 +67,22 @@ def index(request: Request) -> HTMLResponse:
     """
     with session_context() as session:
         rows = session.exec(
-            select(Cell, PCellFactory)
-            .outerjoin(PCellFactory, col(Cell.pcell_factory_id) == col(PCellFactory.id))
+            select(Cell, PCell)
+            .outerjoin(PCell, col(Cell.pcell_id) == col(PCell.id))
             .order_by(
-                col(PCellFactory.name),
-                col(PCellFactory.id),
+                col(PCell.name),
+                col(PCell.id),
                 col(Cell.name),
                 col(Cell.id),
             )
         ).all()
 
-    grouped: dict[int | None, tuple[PCellFactory | None, list[Cell]]] = {}
-    for cell, factory in rows:
-        factory_id = factory.id if factory is not None else None
-        if factory_id not in grouped:
-            grouped[factory_id] = (factory, [])
-        grouped[factory_id][1].append(cell)
+    grouped: dict[int | None, tuple[PCell | None, list[Cell]]] = {}
+    for cell, pcell in rows:
+        pcell_id = pcell.id if pcell is not None else None
+        if pcell_id not in grouped:
+            grouped[pcell_id] = (pcell, [])
+        grouped[pcell_id][1].append(cell)
 
     return _templates.TemplateResponse(
         request=request, name="index.html", context={"groups": list(grouped.values())}

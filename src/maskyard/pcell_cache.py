@@ -51,7 +51,7 @@ def generation_lock(key: str) -> Generator[None]:
     """Hold a host-wide lock while checking and generating one cache entry.
 
     Args:
-        key: Digest identifying the cache entry or factory registration.
+        key: Digest identifying the cache entry or PCell registration.
 
     Yields:
         None while the exclusive lock is held.

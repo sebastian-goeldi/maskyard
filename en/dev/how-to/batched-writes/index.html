@@ -853,7 +853,7 @@
 </code></pre></div>
 <p>Use <code>add_instance(child)</code> and <code>attach_port(name, cross_section)</code> to assemble the graph before submission. New children save in the parent's transaction. You can also load an existing child by ID and attach it. Ports require a saved cross-section.</p>
 <p>The writer commits up to 64 requests per transaction or collects requests for up to 5 ms after the first. If one request fails, the batch rolls back and its futures raise. Set <code>flush=True</code> to skip the batching delay when the next cell depends on this write. Call <code>shutdown_writer()</code> to drain the queue.</p>
-<p>For a PCell factory, use <code>@pdk.pcell(use_writer=True)</code> and return a cell built with <code>pdk.create_cell(persist=False)</code>. The decorated call waits for its saved cell before returning.</p>
+<p>To persist a PCell through the writer, use <code>@pdk.pcell(use_writer=True)</code> and return a cell built with <code>pdk.create_cell(persist=False)</code>. The decorated call waits for its saved cell before returning.</p>
 
 
 

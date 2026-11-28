@@ -838,8 +838,8 @@
 
 
 <h1 id="pdks-and-pcells">PDKs and PCells</h1>
-<p>Use <code>get_or_create_pdk(name)</code> to obtain a named process design kit (PDK) and <code>pdk.pcell()</code> to register a Python function as a parametric cell (PCell) factory. The function takes layout parameters and returns a <code>Cell</code>. Call <code>pdk.create_cell()</code> inside the factory to use its automatically assigned name.</p>
-<p>Each PCell factory has a persistent identity. Equivalent normalized arguments can reuse a saved cell across sessions. On the same host, generation locks coordinate identical calls across processes. A database uniqueness constraint prevents duplicate keyed rows, including when processes on different hosts compute the same result.</p>
+<p>Use <code>get_or_create_pdk(name)</code> to obtain a named process design kit (PDK) and <code>pdk.pcell()</code> to register a Python function as a parametric cell (PCell). The function takes layout parameters and returns a <code>Cell</code>. Call <code>pdk.create_cell()</code> inside the function to use its automatically assigned name.</p>
+<p>Each PCell has a persistent identity. Equivalent normalized arguments can reuse a saved cell across sessions. On the same host, generation locks coordinate identical calls across processes. A database uniqueness constraint prevents duplicate keyed rows, including when processes on different hosts compute the same result.</p>
 <p>PCell calls run synchronously by default. See <a href="../../how-to/batched-writes/">batched writes</a> for writer-backed persistence and <a href="../../how-to/ray/">Ray</a> for remote tasks.</p>
 
 

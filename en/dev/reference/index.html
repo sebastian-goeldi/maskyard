@@ -2649,7 +2649,7 @@ defaults.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Explicit name, or None to use the active factory's automatic name.</p>
+                <p>Explicit name, or None to use the active PCell's automatic name.</p>
               </div>
             </td>
             <td>
@@ -2762,8 +2762,8 @@ defaults.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Register a parametrized cell factory and reuse cells for matching inputs.</p>
-<p>Factory source changes invalidate the corresponding dependency registration.</p>
+        <p>Register a PCell function and reuse cells for matching inputs.</p>
+<p>PCell source changes invalidate the corresponding dependency registration.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2786,7 +2786,8 @@ defaults.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Factory to decorate directly. Omit it to configure a decorator.</p>
+                <p>PCell function to decorate directly. Omit it to configure a
+decorator.</p>
               </div>
             </td>
             <td>
@@ -2835,7 +2836,7 @@ values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Serializers selected by the factory's annotations
+                <p>Serializers selected by the function's annotations
 before runtime types are considered.</p>
               </div>
             </td>
@@ -2868,7 +2869,7 @@ before runtime types are considered.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Whether to expose Ray submissions instead of a synchronous factory.</p>
+                <p>Whether to expose Ray submissions instead of a synchronous call.</p>
               </div>
             </td>
             <td>
@@ -2894,7 +2895,7 @@ before runtime types are considered.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The wrapped factory, a remote factory handle, or a decorator for either form</p>
+                <p>The wrapped function, a remote PCell handle, or a decorator for either form</p>
               </div>
             </td>
           </tr>
@@ -3252,7 +3253,7 @@ requested.</p>
 
 
 
-        <p>Submit a typed PCell factory and cache equivalent Ray references.</p>
+        <p>Submit a typed PCell function and cache equivalent Ray references.</p>
 
 
 
@@ -3286,7 +3287,7 @@ requested.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Reuse a matching Ray reference or submit the factory to a worker.</p>
+        <p>Reuse a matching Ray reference or submit the PCell function to a worker.</p>
 <p>A failed cached task is discarded so a subsequent call can retry it.</p>
 
 
@@ -3310,7 +3311,7 @@ requested.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Positional arguments to bind to the cell factory.</p>
+                <p>Positional arguments to bind to the PCell function.</p>
               </div>
             </td>
             <td>
@@ -3326,7 +3327,7 @@ requested.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Keyword arguments to bind to the cell factory.</p>
+                <p>Keyword arguments to bind to the PCell function.</p>
               </div>
             </td>
             <td>
@@ -3375,7 +3376,7 @@ requested.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If the arguments do not match the factory signature.</p>
+                <p>If the arguments do not match the PCell function's signature.</p>
               </div>
             </td>
           </tr>

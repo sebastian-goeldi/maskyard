@@ -43,7 +43,7 @@ def test_pcell_preserves_signature_and_commits_cell(
         assert component(5, label="test").id == cell_id
 
 
-def test_same_factory_name_in_two_pdks_has_separate_cache(
+def test_same_pcell_name_in_two_pdks_has_separate_cache(
     test_engine: Engine,
 ) -> None:
     database.create_db_and_tables()
@@ -63,7 +63,7 @@ def test_same_factory_name_in_two_pdks_has_separate_cache(
     first = first_component(5)
     second = component(5)
     assert first.id != second.id
-    assert first.pcell_factory_id != second.pcell_factory_id
+    assert first.pcell_id != second.pcell_id
     assert first.hashkey == second.hashkey
 
 
@@ -121,7 +121,7 @@ def test_nested_pcells_reuse_cached_session(
     assert sessions == [database.get_session(), database.get_session()]
 
 
-def test_pcell_factory_form_normalizes_calls_and_reloads_cell(
+def test_configured_pcell_decorator_normalizes_calls_and_reloads_cell(
     test_engine: Engine,
 ) -> None:
     database.create_db_and_tables()
@@ -158,9 +158,9 @@ def test_pcell_auto_name_is_single_use_and_restored_on_error(
         pdk.create_cell()
         with pytest.raises(CellNameError):
             pdk.create_cell()
-        raise RuntimeError("factory failed")
+        raise RuntimeError("PCell failed")
 
-    with pytest.raises(RuntimeError, match="factory failed"):
+    with pytest.raises(RuntimeError, match="PCell failed"):
         component()
     assert automatic_cell_name.get() is None
 
@@ -201,6 +201,8 @@ def test_pcell_persists_json_settings(test_engine: Engine, use_writer: bool) -> 
     with Session(test_engine) as session:
         saved = session.get(oas.Cell, cell_id)
         assert saved is not None
+        assert saved.pcell is not None
+        assert saved.pcell.name == "component"
         assert saved.info["labels"] == {"core": ["strip", None]}
         widths = saved.settings["widths"]
         assert widths == {"core": [3.0, 4.5]}

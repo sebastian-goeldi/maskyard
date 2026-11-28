@@ -10,7 +10,7 @@ from .path import PathType
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .factory import PCellFactory
+    from .pcell import PCell
 
 
 class Dependency(SQLModel, table=True):
@@ -18,6 +18,6 @@ class Dependency(SQLModel, table=True):
     path: Path = Field(unique=True, sa_type=PathType)
     file_hash: str = Field()
 
-    pcell_factories: list[PCellFactory] = Relationship(
-        sa_relationship=relationship("PCellFactory", back_populates="dependency")
+    pcells: list[PCell] = Relationship(
+        sa_relationship=relationship("PCell", back_populates="dependency")
     )

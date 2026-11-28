@@ -4,10 +4,10 @@ from . import (
     cross_section,
     dependency,
     enclosure,
-    factory,
     geometry,
     instance,
     layer,
+    pcell,
     pdk,
     port,
 )
@@ -18,10 +18,10 @@ __all__ = [
     "cross_section",
     "dependency",
     "enclosure",
-    "factory",
     "geometry",
     "instance",
     "layer",
+    "pcell",
     "pdk",
     "port",
 ]

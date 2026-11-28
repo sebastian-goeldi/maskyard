@@ -62,7 +62,7 @@ class CellWrite:
     settings: dict[str, JSONSerializable] = field(default_factory=dict)
     instances: tuple[InstanceWrite, ...] = ()
     ports: tuple[PortWrite, ...] = ()
-    pcell_factory_id: int | None = None
+    pcell_id: int | None = None
     hashkey: bytes | None = None
 
     @classmethod
@@ -138,7 +138,7 @@ class CellWrite:
             settings=deepcopy(cell.settings.data),
             instances=tuple(instances),
             ports=tuple(ports),
-            pcell_factory_id=cell.pcell_factory_id,
+            pcell_id=cell.pcell_id,
             hashkey=cell.hashkey,
         )
         seen[identity] = result
@@ -285,7 +285,7 @@ class CellWriter:
         layout.read_bytes(data.geometry)
         cell = Cell(
             name=data.name,
-            pcell_factory_id=data.pcell_factory_id,
+            pcell_id=data.pcell_id,
             hashkey=data.hashkey,
         )
         cell.geometry = Geometry(id=None, layout=layout)

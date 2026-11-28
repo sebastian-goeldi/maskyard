@@ -12,11 +12,9 @@ if TYPE_CHECKING:
     from .pdk import Pdk
 
 
-class PCellFactory(SQLModel, table=True):
+class PCell(SQLModel, table=True):
     __table_args__ = (
-        UniqueConstraint(
-            "pdk_id", "dependency_id", "name", name="uq_pcell_factory_identity"
-        ),
+        UniqueConstraint("pdk_id", "dependency_id", "name", name="uq_pcell_identity"),
     )
     id: int = Field(default=None, primary_key=True)
 
@@ -24,15 +22,15 @@ class PCellFactory(SQLModel, table=True):
 
     pdk_id: int = Field(default=None, foreign_key="pdk.id", ondelete="CASCADE")
     pdk: Pdk = Relationship(
-        sa_relationship=relationship("Pdk", back_populates="pcell_factories")
+        sa_relationship=relationship("Pdk", back_populates="pcells")
     )
 
     dependency_id: int = Field(
         default=None, foreign_key="dependency.id", ondelete="CASCADE"
     )
     dependency: Dependency = Relationship(
-        sa_relationship=relationship("Dependency", back_populates="pcell_factories")
+        sa_relationship=relationship("Dependency", back_populates="pcells")
     )
     cells: list[Cell] = Relationship(
-        sa_relationship=relationship("Cell", back_populates="pcell_factory")
+        sa_relationship=relationship("Cell", back_populates="pcell")
     )

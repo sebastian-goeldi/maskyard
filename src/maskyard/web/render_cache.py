@@ -24,10 +24,10 @@ import klayout.db as kdb
 from sqlalchemy.engine import make_url
 from sqlmodel import col, select
 
-from maskyard.config import settings
-from maskyard.engine import session_context
-from maskyard.models.cell import Cell
-from maskyard.models.geometry import Geometry
+from ..config import settings
+from ..engine import session_context
+from ..models.cell import Cell
+from ..models.geometry import Geometry
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

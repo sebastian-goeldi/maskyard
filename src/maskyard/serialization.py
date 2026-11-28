@@ -354,7 +354,7 @@ def check_metadata_type(value: object) -> MetaData:
 
 
 def serialize_setting(setting: object) -> JSONSerializable:
-    """Encode a raw factory argument for JSON storage.
+    """Encode a raw PCell argument for JSON storage.
 
     Args:
         setting: Argument value, which may contain nested containers or KLayout objects.
@@ -410,7 +410,7 @@ def get_cell_name(
     """Generate a bounded-length name from a cell type and its parameters.
 
     Args:
-        cell_type: Base name, usually the factory name.
+        cell_type: Base name, usually the PCell name.
         max_cellname_length: Maximum name length. A false value uses the configured
             limit.
         **kwargs: Parameter values to encode in the name.

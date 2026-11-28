@@ -11,13 +11,13 @@ uv run --locked python examples/chip_30_mzis.py --output "$scratch/chip.gds"
 uv run --locked --extra web uvicorn maskyard.web:app
 ```
 
-脚本将 `chip.gds` 和 `chip.csv` 写入临时目录。打开 <http://127.0.0.1:8000/>，选择 `chip` 工厂生成的单元，然后点击 **Fit layout**，即可查看完整阵列。
+脚本将 `chip.gds` 和 `chip.csv` 写入临时目录。打开 <http://127.0.0.1:8000/>，选择 `chip` PCell生成的单元，然后点击 **Fit layout**，即可查看完整阵列。
 
 ![Maskyard 版图查看器显示包含 30 个 MZI 的芯片](../../../assets/mzi-viewer.png)
 
 ## 脚本如何添加填充 { #adding-fill }
 
-`chip()` 工厂函数创建芯片的基础层次结构。运行脚本会调用 `main()`，它在导出 GDS 前用 `top.fill()` 添加边长为 200 nm 的方形填充单元，并在波导周围留出 5 µm 的间距。如果数据库中的芯片已包含填充，脚本会跳过这一步。
+`chip()` PCell 函数创建芯片的基础层次结构。运行脚本会调用 `main()`，它在导出 GDS 前用 `top.fill()` 添加边长为 200 nm 的方形填充单元，并在波导周围留出 5 µm 的间距。如果数据库中的芯片已包含填充，脚本会跳过这一步。
 
 ```python
 --8<-- "chip_30_mzis.py:chip-fill"

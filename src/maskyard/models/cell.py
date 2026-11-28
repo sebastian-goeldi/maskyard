@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.engine import Row
 
-    from .factory import PCellFactory
+    from .pcell import PCell
     from .pdk import Pdk
 
 automatic_cell_name: ContextVar[str | None] = ContextVar[str | None](
@@ -38,9 +38,7 @@ automatic_cell_name: ContextVar[str | None] = ContextVar[str | None](
 
 class Cell(SQLModel, Transformable, table=True):
     __table_args__ = (
-        UniqueConstraint(
-            "pcell_factory_id", "hashkey", name="uq_cell_pcell_factory_hashkey"
-        ),
+        UniqueConstraint("pcell_id", "hashkey", name="uq_cell_pcell_hashkey"),
         UniqueConstraint("pdk_id", "name", name="uq_cell_pdk_name"),
     )
     model_config = SQLModelConfig(arbitrary_types_allowed=True)
@@ -52,11 +50,11 @@ class Cell(SQLModel, Transformable, table=True):
     info: CellInfo = Relationship(back_populates="cell")
     settings: CellSettings = Relationship(back_populates="cell")
 
-    pcell_factory_id: int | None = Field(
-        default=None, foreign_key="pcellfactory.id", ondelete="CASCADE"
+    pcell_id: int | None = Field(
+        default=None, foreign_key="pcell.id", ondelete="CASCADE"
     )
-    pcell_factory: PCellFactory | None = Relationship(
-        sa_relationship=relationship("PCellFactory", back_populates="cells")
+    pcell: PCell | None = Relationship(
+        sa_relationship=relationship("PCell", back_populates="cells")
     )
     hashkey: bytes | None = Field(default=None, sa_type=LargeBinary)
     pdk_id: int | None = Field(default=None, foreign_key="pdk.id")
@@ -648,11 +646,11 @@ class CellSettings(SQLModel, table=True):
     data: dict[str, JSONSerializable] = Field(default_factory=dict, sa_type=JSON)
 
     def __getitem__(self, name: str) -> JSONSerializable:
-        """Return the factory parameter stored under a key."""
+        """Return the PCell parameter stored under a key."""
         return self.data[name]
 
     def __setitem__(self, name: str, value: JSONSerializable) -> None:
-        """Store a factory parameter under a key."""
+        """Store a PCell parameter under a key."""
         self.data[name] = value
 
 

@@ -41,7 +41,7 @@ from .cell import Cell, automatic_cell_name
 from .cell import create_cell as _create_cell
 from .cross_section import SymmetricCrossSection
 from .dependency import Dependency
-from .factory import PCellFactory
+from .pcell import PCell
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Mapping, Sequence
@@ -62,7 +62,7 @@ class _PCellOptions(TypedDict, total=False):
 
 
 def _run_remote_pcell(
-    factory: Callable[..., Cell],
+    pcell_function: Callable[..., Cell],
     pdk_name: str,
     database_url: str,
     args: tuple[object, ...],
@@ -87,18 +87,18 @@ def _run_remote_pcell(
         drop_params=drop_params,
         type_serializers=type_serializers,
         type_hints_serializer=type_hints_serializer,
-    )(factory)(*args, **kwargs)
+    )(pcell_function)(*args, **kwargs)
     if cell.id is None:
         raise RuntimeError("Remote PCell was not persisted")
     return cell.id
 
 
 class RemotePCell[**PCellParams]:
-    """Submit a typed PCell factory and cache equivalent Ray references."""
+    """Submit a typed PCell function and cache equivalent Ray references."""
 
     def __init__(
         self,
-        factory: Callable[PCellParams, Cell],
+        pcell_function: Callable[PCellParams, Cell],
         pdk_name: str,
         database_url: str,
         signature: inspect.Signature,
@@ -107,8 +107,8 @@ class RemotePCell[**PCellParams]:
         type_serializers: tuple[tuple[type | UnionType, _Serializer], ...],
         type_hints_serializer: _SerializerMap | None,
     ) -> None:
-        """Store factory and database configuration for remote submissions."""
-        self._factory = factory
+        """Store the PCell function and database settings for remote submissions."""
+        self._pcell_function = pcell_function
         self._pdk_name = pdk_name
         self._database_url = database_url
         self._signature = signature
@@ -118,25 +118,25 @@ class RemotePCell[**PCellParams]:
         self._type_hints_serializer = type_hints_serializer
         self._cache: dict[tuple[Hashable, ...], ObjectRef[int]] = {}
         self._lock = RLock()
-        self.__name__ = get_function_name(factory)
+        self.__name__ = get_function_name(pcell_function)
         self.__signature__ = signature
 
     def remote(
         self, *args: PCellParams.args, **kwargs: PCellParams.kwargs
     ) -> ObjectRef[int]:
-        """Reuse a matching Ray reference or submit the factory to a worker.
+        """Reuse a matching Ray reference or submit the PCell function to a worker.
 
         A failed cached task is discarded so a subsequent call can retry it.
 
         Args:
-            *args: Positional arguments to bind to the cell factory.
-            **kwargs: Keyword arguments to bind to the cell factory.
+            *args: Positional arguments to bind to the PCell function.
+            **kwargs: Keyword arguments to bind to the PCell function.
 
         Returns:
             A Ray reference to the persisted cell ID.
 
         Raises:
-            TypeError: If the arguments do not match the factory signature.
+            TypeError: If the arguments do not match the PCell function's signature.
         """
         import ray
 
@@ -160,7 +160,7 @@ class RemotePCell[**PCellParams]:
                 else:
                     return ref
             ref = ray.remote(_run_remote_pcell).remote(
-                self._factory,
+                self._pcell_function,
                 self._pdk_name,
                 self._database_url,
                 args,
@@ -197,8 +197,8 @@ class Pdk(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     name: str | None = Field(unique=True)
-    pcell_factories: list[PCellFactory] = Relationship(
-        sa_relationship=relationship("PCellFactory", back_populates="pdk")
+    pcells: list[PCell] = Relationship(
+        sa_relationship=relationship("PCell", back_populates="pdk")
     )
     cells: list[Cell] = Relationship(
         sa_relationship=relationship("Cell", back_populates="pdk")
@@ -258,22 +258,23 @@ class Pdk(SQLModel, table=True):
         | RemotePCell[P]
         | Callable[[Callable[P, Cell]], Callable[P, Cell] | RemotePCell[P]]
     ):
-        """Register a parametrized cell factory and reuse cells for matching inputs.
+        """Register a PCell function and reuse cells for matching inputs.
 
-        Factory source changes invalidate the corresponding dependency registration.
+        PCell source changes invalidate the corresponding dependency registration.
 
         Args:
-            function: Factory to decorate directly. Omit it to configure a decorator.
+            function: PCell function to decorate directly. Omit it to configure a
+                decorator.
             drop_params: Parameter names excluded from cache keys.
             type_serializers: Ordered (type, serializer) pairs for matching argument
                 values.
-            type_hints_serializer: Serializers selected by the factory's annotations
+            type_hints_serializer: Serializers selected by the function's annotations
                 before runtime types are considered.
             use_writer: Whether to persist new cells through the batched writer.
-            ray: Whether to expose Ray submissions instead of a synchronous factory.
+            ray: Whether to expose Ray submissions instead of a synchronous call.
 
         Returns:
-            The wrapped factory, a remote factory handle, or a decorator for either form
+            The wrapped function, a remote PCell handle, or a decorator for either form
             when function is omitted.
 
         Raises:
@@ -283,13 +284,13 @@ class Pdk(SQLModel, table=True):
         """
 
         def decorate(
-            factory: Callable[P, Cell],
+            pcell_function: Callable[P, Cell],
         ) -> Callable[P, Cell] | RemotePCell[P]:
-            """Register a factory and build the synchronous wrapper or remote handle."""
-            sig = inspect.signature(factory)
-            file = _get_path(factory)
+            """Register the PCell and build its synchronous wrapper or remote handle."""
+            sig = inspect.signature(pcell_function)
+            file = _get_path(pcell_function)
             session = get_session()
-            name = get_function_name(factory)
+            name = get_function_name(pcell_function)
 
             with file.open("rb") as f:
                 file_hash = sha256(f.read()).hexdigest()
@@ -298,7 +299,7 @@ class Pdk(SQLModel, table=True):
             )
             with generation_lock(registration_key):
                 if self.name is None:
-                    raise ValueError("PCell factories require a named PDK")
+                    raise ValueError("PCells require a named PDK")
                 registered_pdk_id = get_or_create_pdk(self.name).id
                 dependency = session.exec(
                     select(Dependency).where(Dependency.path == file)
@@ -315,15 +316,15 @@ class Pdk(SQLModel, table=True):
                     session.commit()
                 dialect = session.get_bind().dialect.name
                 if dialect == "sqlite":
-                    insert_factory = sqlite_insert(PCellFactory)
+                    insert_pcell = sqlite_insert(PCell)
                 elif dialect == "postgresql":
-                    insert_factory = postgresql_insert(PCellFactory)
+                    insert_pcell = postgresql_insert(PCell)
                 else:
                     raise NotImplementedError(
                         f"Unsupported database dialect: {dialect}"
                     )
                 session.exec(
-                    insert_factory.values(
+                    insert_pcell.values(
                         name=name,
                         pdk_id=registered_pdk_id,
                         dependency_id=dependency.id,
@@ -332,17 +333,16 @@ class Pdk(SQLModel, table=True):
                     )
                 )
                 session.commit()
-                pcell_factory = session.exec(
-                    select(PCellFactory).where(
-                        PCellFactory.name == name,
-                        PCellFactory.pdk_id == registered_pdk_id,
-                        PCellFactory.dependency_id == dependency.id,
+                pcell_id = session.exec(
+                    select(PCell.id).where(
+                        PCell.name == name,
+                        PCell.pdk_id == registered_pdk_id,
+                        PCell.dependency_id == dependency.id,
                     )
                 ).one()
-            factory_id = pcell_factory.id
 
             try:
-                hints = get_type_hints(factory)
+                hints = get_type_hints(pcell_function)
             except (NameError, TypeError):
                 hints = {}
             serializers: _SerializerMap | None = type_hints_serializer
@@ -360,7 +360,7 @@ class Pdk(SQLModel, table=True):
                 if self.name is None:
                     raise ValueError("Ray PCells require a named PDK")
                 return RemotePCell(
-                    factory,
+                    pcell_function,
                     self.name,
                     str(session.get_bind().engine.url),
                     sig,
@@ -372,7 +372,7 @@ class Pdk(SQLModel, table=True):
             cache: dict[tuple[object, Hashable], int] = {}
             lock = RLock()
 
-            @wraps(factory)
+            @wraps(pcell_function)
             def wrapper_pcell(*args: P.args, **kwargs: P.kwargs) -> Cell:
                 """Reuse a matching cell or build and commit a new one."""
                 bound = sig.bind(*args, **kwargs)
@@ -396,17 +396,17 @@ class Pdk(SQLModel, table=True):
                             return saved
                         del cache[cache_key]
 
-                    name = get_cell_name(get_function_name(factory), **params)
+                    name = get_cell_name(get_function_name(pcell_function), **params)
                     pcell_key = identity(
                         str(session.get_bind().engine.url),
-                        str(factory_id),
+                        str(pcell_id),
                         key_bytes.hex(),
                     )
                     with generation_lock(pcell_key):
                         with Session(session.get_bind()) as lookup:
                             existing_id = lookup.exec(
                                 select(Cell.id).where(
-                                    Cell.pcell_factory_id == factory_id,
+                                    Cell.pcell_id == pcell_id,
                                     Cell.hashkey == key_bytes,
                                 )
                             ).first()
@@ -417,8 +417,8 @@ class Pdk(SQLModel, table=True):
                                 return saved
 
                         with automatic_cell_name.set(name):
-                            cell = factory(*args, **kwargs)
-                        cell.pcell_factory_id = factory_id
+                            cell = pcell_function(*args, **kwargs)
+                        cell.pcell_id = pcell_id
                         cell.hashkey = key_bytes
                         cell_info = cell.info
                         cell_settings = cell.settings
@@ -453,7 +453,7 @@ class Pdk(SQLModel, table=True):
         """Create an empty cell associated with this PDK.
 
         Args:
-            name: Explicit name, or None to use the active factory's automatic name.
+            name: Explicit name, or None to use the active PCell's automatic name.
             persist: Whether to add the cell to the current session for a later commit.
 
         Returns:
@@ -496,7 +496,7 @@ def get_keys_function(
     """Build a function that normalizes arguments into a PCell cache key.
 
     Args:
-        hints: Factory type hints keyed by parameter name.
+        hints: PCell function type hints keyed by parameter name.
         drop_args: Names to remove from keyword arguments before hashing.
         serialize_types: Ordered serializers matched against runtime value types.
         serialize_hints: Serializers matched against declared types with priority over

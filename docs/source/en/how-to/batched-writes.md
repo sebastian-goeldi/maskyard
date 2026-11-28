@@ -10,4 +10,4 @@ Use `add_instance(child)` and `attach_port(name, cross_section)` to assemble the
 
 The writer commits up to 64 requests per transaction or collects requests for up to 5 ms after the first. If one request fails, the batch rolls back and its futures raise. Set `flush=True` to skip the batching delay when the next cell depends on this write. Call `shutdown_writer()` to drain the queue.
 
-For a PCell factory, use `@pdk.pcell(use_writer=True)` and return a cell built with `pdk.create_cell(persist=False)`. The decorated call waits for its saved cell before returning.
+To persist a PCell through the writer, use `@pdk.pcell(use_writer=True)` and return a cell built with `pdk.create_cell(persist=False)`. The decorated call waits for its saved cell before returning.
